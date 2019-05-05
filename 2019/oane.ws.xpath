@@ -1,0 +1,35 @@
+~version: "2.0"
+
+publication: //div[@class="publication"]/div[@class="show"]
+
+author: $publication/meta[@itemprop="author"]/@content
+
+content: $publication/div[@class="plaintext"]
+@if_not( $content ) {
+  content: //div[@class="plaintext"]
+  cover: $content//img
+}
+
+body_old: $content/div[@class="content"]
+body: $body_old/div[@id="hypercontext"]
+title: $content/h1
+#@set_attr(href, "./../@href"): //a/img
+#@remove: $body_old/div/img[@src="/uploads/noimg.gif"]
+
+@if_not ( $cover ) {
+  cover: $body_old/div/img[has-class("newsimg")]
+}
+@datetime(+3, "en-US", "y-MM-dd'T'HH:mm:ss'+0330'"): $publication/meta[@itemprop="datePublished"]/@content
+published_date: $@
+
+<blockquote>: $body_old//div[has-class("quote")]
+<div>: $body_old//a[./img[@src]]
+@remove: $body_old//*[contains(@style, "display: none")]
+
+@wrap(<b>): $body_old//div[@class="summary2"]
+@after(<br>): $@
+
+<related>: ($body_old//p/b/..)[last()]
+related
+<h1>: $related/b
+@append_to($body): $related

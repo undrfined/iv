@@ -1,0 +1,57 @@
+~version: "2.0"
+
+site_name: "CAMPEONES"
+
+?path_not: /*editors/*.*
+!path_not: /*vacancy/*.*
+!path_not: /*contacts/*.*
+
+@replace("^\\s+$", ""): //text()
+
+channel: "@campeones_ua"
+
+article: //article
+body: $article
+
+header: $article/header
+title: $header/h1
+@datetime(0, "en-US", "dd/MM/yy - HH:mm"): $article/footer//div[has-class("date_article")]/text()
+published_date: $@
+
+@html_to_dom: //meta[@property="og:description"]/@content
+description: $@//text()
+
+author: $article//div[has-class("author_place")]//a//text()
+author_url: $article//div[has-class("author_place")]//a/@href
+
+
+@remove: $header/div[has-class("tags_article")]
+
+@remove: $body//*[./a[@href="https://t.me/campeones_ua"]]
+@remove: $body//*[./a[@href="http://t.me/campeones_ua"]]
+@remove: $body/footer
+
+<figure>: $body//div[has-class("images_article")]
+$figure
+<figcaption>: $figure/span
+cover: $figure
+
+<footer>: $body/span[has-class("source_article")]
+
+@remove: $body//img[contains(@src, "youtu.be/") or contains(@src, "youtube.com/")]
+
+$problems: $body
+@while( $problems ) {
+  $test: $body//*[self::blockquote or self::aside or self::figure or (self::img and not(./ancestor::figure)) or self::iframe or self::slideshow or self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)]]
+ 
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br]
+ 
+  @if( $problems ) {
+    $parent: $problems/parent::*
+    @detach: $parent/node()
+    @set_attr("merge", $index): $@
+    <remove>: $parent
+    @after_el("./parent::*"): $problems
+    @combine: $body//self::*[prev-sibling::*/@merge = @merge]
+  }
+}

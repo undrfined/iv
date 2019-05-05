@@ -1,0 +1,158 @@
+~version: "2.1"
+
+site_name: "cash"
+article: //div[@id="block-system-main"]//div[has-class("content")]/div[@about and (contains(@typeof, "News") or contains(@typeof, "Document"))]
+
+body: $article
+@remove: $body//div[has-class("group-right")]
+
+header: $body//div[has-class("field-name-field-upper-title")]
+title: $header//span[has-class("main-title")]
+title: $body//*[has-class("field-name-title")]//div[@property="dc:title"]
+
+kicker: $header//span[has-class("upper-main-title-newline")]
+@remove: $body//div[has-class("field-name-field-header-title")]
+
+subtitle: $body//div[has-class("field-name-field-teaser")]
+
+<p>: $body//div[has-class("field-name-field-authors")]//div[@rel="schema:author"]
+$p: $@
+@replace("von\\s+(.*)", "$1", "i"): $@
+author: $p
+@remove: $p
+
+@match("videoId: '(.+?)'", 1): $body//div[@id="player"]/following-sibling::script
+$script: $@
+<iframe>: $@/preceding-sibling::div[@id="player"]
+$player: $@
+@set_attr(src, "https://youtube.com/embed/", "./following-sibling::script/text()"): $player
+@wrap(<related>): $script/following-sibling::h2
+@combine: $@/following-sibling::*
+
+
+@set_attr(href, "./ancestor::a/@href"): $body//a//img
+
+@remove: $header
+
+@replace("\n", "<br>"): $body//pre
+@html_to_dom: $@
+<pre>: $@
+
+@remove: $body//div[has-class("field-name-field-publish-date")]/*
+
+<figure>: $body//div[has-class("group-image")]
+$figure: $@
+<figcaption>: $figure//div[has-class("field-name-field-image-ref-caption")]
+@if_not( $@ ) {
+  @append(<figcaption>): $figure
+}
+<cite>: $figure//div[has-class("field-name-cash-ref-image-author")]
+@append_to("./../figcaption"): $@
+
+cover: $body//figure[prev-sibling::div[has-class("field-name-field-publish-date")]]
+cover: $body//figure[prev-sibling::div[has-class("field-name-field-authors")]]
+
+@remove: $body//div[has-class("field-name-disqus-comment")]
+
+@replace("\\s", " "): //text()
+
+<figcaption>: $body//p[./img]/next-sibling::p/em
+<figure>: $@/../prev-sibling::p
+@append_to("./../prev-sibling::figure"): $@/next-sibling::p/figcaption
+
+$poll: $body//div[has-class("field-name-field-poll-in-news")]
+
+@before(<hr>): $poll
+@after(<hr>): $poll
+
+<table>: $poll//div[has-class("poll")]
+$poll: $@
+@remove: $poll/div[has-class("total")]
+@wrap(<tr>): $poll/div[has-class("text")]
+@wrap_inner(<th>, align, "left"): $@
+
+@wrap(<td>): $poll/div[has-class("bar")]
+$td: $@
+@append_to("./prev-sibling::td"): $poll/div[has-class("percent")]
+@append_to("./prev-sibling::tr"): $td
+#@wrap_inner(<nobr>): $poll//td//div[has-class("percent")]
+#@debug: $@
+
+
+<span>: $poll//div[has-class("percent")]
+<span>: $poll//div[has-class("bar")]
+$bar: $@/div
+@replace("%", ""): $bar/@style
+@style_to_attrs(width, width): $bar
+<pic>: $bar
+@set_attrs(src, "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAAYdEVYdFNvZnR3YXJlAHBhaW50Lm5ldCA0LjEuMvojzfEAAAAMSURBVBhXY5jYowoAAvQBQ7aaXy8AAAAASUVORK5CYII=", height, 16): $@
+@map( $$ ) {
+  $bar_current: $@
+  @append(<current>, foo, "100"): //head
+  $lol: $@
+  @set_attr(bar, $bar_current/@width): $lol
+
+  @set_attr(bar, "1 Jan 1970 ", @foo, " second -", @bar, " second"): $lol
+  @datetime: $lol/@bar
+
+  @set_attr(bar, $@): $lol
+
+  @after(<pic>, src, "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAAYdEVYdFNvZnR3YXJlAHBhaW50Lm5ldCA0LjEuMvojzfEAAAAMSURBVBhXY/j84S0ABaoC0ZAheVEAAAAASUVORK5CYII=", width, "./ancestor::html/head/current/@bar", height, 16): $bar_current
+  @remove: //head/current
+}
+
+@remove: $body//div[has-class("tags")]
+
+<related>: $body//div[has-class("further-info")]
+<h1>: $@//div[has-class("label-above")]
+
+<iframe>: $body//div[has-class("infogram-embed")]
+@set_attr(src, "https://e.infogram.com/", @data-id, "?src=embed"): $@
+
+#  _           _                 
+# | | _____  _(_) ___ ___  _ __  
+# | |/ _ \ \/ / |/ __/ _ \| '_ \ 
+# | |  __/>  <| | (_| (_) | | | |
+# |_|\___/_/\_\_|\___\___/|_| |_|
+#                                
+?exists: //div[has-class("lexicon-links")]
+
+main: //div[@role="main"]
+
+title: $main/h1
+body: $main//div[has-class("content")]
+<b>: $body//div[has-class("label-inline")]
+
+<p>: $body//div[has-class("lexicon-links")]
+@after(" | "): $@/a[next-sibling::a]
+
+
+#  ___  _                   
+# |__ \| |                  
+#    ) | |_ _ __ _   _  ___ 
+#   / /| __| '__| | | |/ _ \
+#  |_| | |_| |  | |_| |  __/
+#  (_)  \__|_|   \__,_|\___|
+
+?true
+
+# ULTIMATE PARSER 9000
+
+$problems: $body
+@while( $problems ) {
+  $test: $body//*[self::blockquote or self::aside or self::figure or (self::img and not(./ancestor::figure)) or (self::iframe and not(./ancestor::figure)) or (self::video and not(./ancestor::figure)) or self::slideshow or self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)] or self::h1 or self::h2 or self::h3 or self::h4 or self::h5]
+ 
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br]
+ 
+  @split_parent: $problems
+}
+
+?path: /*trading.*
+?path: /*mobile.*
+?path: /*rss.*
+?exists: $body//form
+?path: /*ueberuns.*
+?path: /*werbung.*
+?path: /*ratgeber/*steuerrechner.*
+
+body!!: null

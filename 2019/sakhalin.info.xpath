@@ -1,0 +1,151 @@
+~version: "2.1"
+
+channel: "@SakhCom"
+##nr tooltips https://sakhalin.info/news/126239
+
+##r page can be supported https://sakhalin.info/news/145359?poll=form
+
+# todo pagination https://sakhalin.info/news/78397
+# todo fix related count https://sakhalin.info/news/141041
+
+##r should be cite https://sakhalin.info/news/149087
+
+site_name: "SAKHALIN.INFO"
+body: //div[has-class("article")]
+title: $body/h1[has-class("article-header")]
+
+@datetime(0, "ru-RU", "HH:mm dd MMMM y"): $body/div[has-class("article-date")]
+published_date: $@
+
+author: $body//div[has-class("article-authors-top")]
+
+@wrap_inner(<b>): $body//*[has-class("article-lead")]
+
+@remove: $body//div[has-class("article-date") or has-class("article-channel") or has-class("article-authors-top")]
+
+<footer>: $body//div[has-class("article-authors") and has-class("text-right")]
+
+@remove: $body//div[has-class("article-actions-share-container")]
+
+@set_attr(src, @data-small): $body//img
+@set_attr(src, @data-preview): $body//img
+@set_attr(src, @data-big): $body//img
+
+<slideshow>: $body//div[has-class("gallery")]
+@wrap(<figure>): $@//img
+$figure: $@
+@append(@data-text): $figure/img
+@html_to_dom: $@
+@wrap_inner(<figcaption>)
+@append_to("./ancestor::figure"): $@
+
+@append(<br>): $body//p[has-class("text-style-ps")]
+@combine: $body//p[has-class("text-style-ps")]/next-sibling::p[has-class("text-style-ps")]
+<blockquote>: $body//p[has-class("text-style-ps")]
+
+@before(<hr>): $body//div[has-class("reference")]
+@after(<hr>): $body//div[has-class("reference")]
+
+@before(<hr>): $body//div[has-class("update-caption-wrapper")]
+<i>: $body//div[has-class("update-caption")]
+
+<related>: //div[has-class("article-related")]
+$related: $@
+@remove: $related//div[has-class("article-stats")]
+<h1>: $related//div[has-class("article-tag-group")]/span
+@remove: $related//div[has-class("item")]
+@append(<block>): $related
+$block: $@
+@repeat( 5 ) {
+  @append_to($block): ($related//div[has-class("item-link")]/a)[1]
+}
+@remove: $related//div[has-class("item-link")]
+@append_to($body): $related
+
+# report https://sakhalin.info/news/118395
+<figure>: $body//*[has-class("lightbox") or has-class("article-inline-photo")]
+<figcaption>: $@//div[has-class("article-photo-caption")]
+
+# https://sakhalin.info/news/167732
+<figure>: $body//div[has-class("article-video")]
+$figure: $@
+<figcaption>: $@/next-sibling::div[has-class("article-video-caption")]
+@append_to("./prev-sibling::figure"): $@
+
+@append(<figcaption>): $figure[not(.//figcaption)]
+<cite>: $figure/next-sibling::div[has-class("article-video-link")]
+@append_to("./prev-sibling::figure/figcaption"): $@
+
+# report https://sakhalin.info/weekly/167700
+
+<table>: $body//*[has-class("text-style-forum")]
+@wrap_inner(<td>)
+# report https://sakhalin.info/weekly/155948/
+<blockquote>: $body//*[has-class("quote")]
+@after(<br>): $body//blockquote//p
+@unsupported: $body//form
+
+$meta: //head/meta
+image_url: $meta[@property="og:image" and @content != "https://sakhalin.info/img/share.png"]/@content[normalize-space()]
+image_url: $cover/@src
+image_url: $body//img/@src
+image_url: ""
+# report bad cover https://sakhalin.info/news/155315
+
+@append_to($body): //div[@id="article-poll"]
+@unsupported
+
+# report bold https://sakhalin.info/weekly/113487
+@wrap_inner(<b>): $body//*[has-class("interview-question")]
+<span>: $$
+@append(<br>)
+@prepend_to("./next-sibling::p"): $$
+
+# report verse https://sakhalin.info/weekly/106083
+# ^ https://sakhalin.info/news/121360
+
+@replace("\\s", " "): //text()
+
+@combine(<br>): $body//p[has-class("text-style-verse")]/next-sibling::p[has-class("text-style-verse")]
+<span>: $@
+$verse: $@
+@wrap(<span>): $verse/text()[normalize-space()]
+<p>: $verse/br[./next-sibling::br]
+@wrap_inner(<i>): $verse//span
+@after("\u00a0"): $verse/br
+@prepend("\u00a0"): $verse
+
+
+
+#  ___  _                   
+# |__ \| |                  
+#    ) | |_ _ __ _   _  ___ 
+#   / /| __| '__| | | |/ _ \
+#  |_| | |_| |  | |_| |  __/
+#  (_)  \__|_|   \__,_|\___|
+
+?true
+@set_attr(srcset, @data-srcset): $body//img
+@set_attr(src, @data-src): $body//img
+
+description: $meta[@name="twitter:description"]/@content[normalize-space()]
+description: $meta[@name="og:description"]/@content[normalize-space()]
+description: $body/p[normalize-space()]
+description: $meta[@name="description"]/@content[normalize-space()]
+
+# ULTIMATE PARSER 9000
+
+$problems: $body
+@while( $problems ) {
+  $test: $body//*[self::blockquote or self::aside or self::figure or (self::img and not(./ancestor::figure)) or (self::iframe and not(./ancestor::figure)) or (self::audio and not(./ancestor::figure)) or (self::video and not(./ancestor::figure)) or (self::slideshow and not(./ancestor::figure)) or self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)]]
+ 
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br or ancestor::ul or ancestor::li]
+ 
+  @split_parent: $problems
+}
+
+?path: /*export.*
+?path: /*reklama.*
+
+body!!: null
+

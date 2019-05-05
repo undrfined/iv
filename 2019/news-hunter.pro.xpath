@@ -1,0 +1,38 @@
+~version: "2.0"
+
+?path_not: /*registratsiya.*
+!path_not: /*privacy-policy/*.*
+!path_not: /*administratsia/*.*
+@replace("^\\s+$", ""): //text()
+main: //main
+article: $main/article
+body: $article
+
+cover: $article/div[has-class("title-img")]/img
+title: $article/div[has-class("title-img")]/h1
+@remove: $article/*[has-class("onp-sl-overlap-locker-box")]
+
+<related>: $article//iframe[contains(@src, "news-hunter.pro/")]/../prev-sibling::blockquote
+@remove: $article//iframe[contains(@src, "news-hunter.pro/")][./../prev-sibling::related]
+
+<div>: $article//p[.//img]
+<div>: $article//p[.//iframe]
+@before_el("./.."): $article//h2/img
+
+<details>: $article/div[@id="toc_container"]
+$details
+<summary>: $details/p[has-class("toc_title")]
+@set_attr(open, "open"): $details
+
+@prepend(<anchor>): $article//span[@id]
+$anchor: $@
+@set_attr(name, "./../@id"): $anchor
+
+# Related
+<related>: $main/div[has-class("yarpp-related")]
+$related
+<h1>: $related/div[has-class("title")]
+@append_to($body): $related
+
+<div>: //script[contains(@src, "tradingview.com/external-embedding")]
+@unsupported: $@

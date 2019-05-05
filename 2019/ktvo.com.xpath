@@ -1,0 +1,196 @@
+~version: "2.0"
+
+site_name: "KTVO"
+
+@match("sinclairDigital\\.pageData = ({.*});", 1): //script[contains(text(), "sinclairDigital.pageData = ")]
+@json_to_xml: $@
+json: $@
+
+rendering: $json/rendering
+story: $json/story
+@replace("{(/.*?)}", "<$1>"): $story/richText
+@html_to_dom: $@
+body: $@
+@append_to($story): $body
+
+title: $story/headline
+# diff
+#@datetime: $story/publishedDateISO8601
+#published_date
+
+# dateLine
+@if( $story/dateLine[string-length(text())>0] ) {
+  @prepend(<span>): $body//p[1]
+  @append_to($@): $story/dateLine
+  @append_to($@): " — "
+}
+@debug: $json//audios
+
+# author
+author: $story/byLine
+
+# Hero image
+@if_not( $rendering/analytics/storyType[text()="gallery"] ) {
+  @prepend("-"): $story/images/*[./externalId/text() = ./ancestor::story/heroImage/image/externalId/text()]/orderNumber
+}
+
+# Sort images
+@append(<div>): //head
+$container: $@
+$array: $story/images/*
+@append_to($container): $array
+@append(<roflan>): $container
+$roflan: $@
+
+@map( $array ) {
+  $item: $@
+  $r: $roflan/*[number(./orderNumber/text()) < number(./ancestor::roflan/../*[1]/orderNumber/text())]
+  @if( $r ) {
+    @after_el(($r)[last()]): $item
+  }
+  
+  @if_not( $r ) {
+    $r2: $roflan/*[number(./orderNumber/text()) > number(./ancestor::roflan/../*[1]/orderNumber/text())]
+    @if( $r2 ) {
+      @before_el($r2[1]): $item
+    }
+    
+    @if_not( $r2 ) {
+      @append_to($roflan): $item
+    }
+  }
+}
+
+# Cover
+@if_not( $story/galleryAllowed[string-length(text())>0] ) {
+  <figure>: $story/teaserImage/image
+  $figure
+  <figcaption>: $figure/caption
+  # diff medium
+  <img>: $figure/large16x9Url
+  @set_attr(src, ./text()): $@
+  cover!: $figure
+}
+
+@if( $story/galleryAllowed[string-length(text())>0] ) {
+  <slideshow>: $roflan
+  $slideshow_cover: $@
+  <figure>: $slideshow_cover/*
+  $figure_slideshow_cover
+  <figcaption>: $figure_slideshow_cover/caption
+  $fc: $@
+  @wrap_inner(<b>): $figure_slideshow_cover/title
+  @append(<br>): $@
+  @prepend_to("./../../figcaption"): $$
+  # diff medium
+  <img>: $figure_slideshow_cover/large16x9Url
+  @set_attr(src, ./text()): $@
+  @prepend_to($body): $slideshow_cover
+  @if_not( $slideshow_cover//figure[2] ) {
+    cover!: $slideshow_cover/figure
+  }
+}
+
+
+
+# Video cover
+
+<video>: $body//sd-embed[@data-embed-type="video"]
+$video: $@
+@map( $video ) {
+  $item: $@
+  @set_attr(data-externalid, $item/@data-externalid): $item/ancestor::story/videos/*
+  @set_attr(src, "$item/ancestor::story/videos/*[./externalId=@data-externalid]/mp4Url" ): $item
+  @remove: $item/ancestor::story/videos/*[./externalId=@data-externalid]
+}
+
+@wrap(<figure>): $video
+$figure_video: $@
+@append(@data-caption): $figure_video/video
+@urldecode: $@
+@wrap_inner(<figcaption>): $figure_video/video
+@append_to("./.."): $@
+
+<video>: $story/videos/*
+$video: $@
+@set_attr(src, "./mp4Url/text()"): $video
+@prepend_to($body): $video
+
+# Images
+<figure>: $body//sd-embed[@data-embed-type="image"]
+$figure_embed: $@
+@append(@data-caption): $figure_embed
+@urldecode: $@
+@wrap_inner(<figcaption>): $figure_embed
+@urldecode: $figure_embed/@data-renditions
+@json_to_xml: $$
+<img>: $@/full16x9
+$image: $@
+@set_attr(src, ./url/text()): $@
+@append_to("./ancestor::figure[1]"): $image
+
+# Youtube
+<iframe>: $body//sd-embed[@data-embed-type="youtube"]
+@set_attr(src, @data-embed-file): $@
+
+# Twitter
+<iframe>: $body//sd-embed[@data-embed-type="twitter"]
+@set_attr(src, "https://twitter.com/roflanEbalo/status/", @data-embed-file): $@
+
+# Facebook, instagram
+$fb: $story//sd-embed[@data-embed-type="facebook" or @data-embed-type="instagram"]
+@urldecode: $fb/@data-embed-file
+@html_to_dom: $@
+@append_to("./.."): $@
+<div>: $fb
+
+# Video
+#@debug: $body//videos
+#<figure>: $body//sd-embed[@data-embed-type="video"]
+#$figure: $@
+#@debug: $@/@data-externalid
+#@append(@data-caption): $figure
+#@urldecode: $@
+#@wrap_inner(<figcaption>): $figure
+
+#@prepend(<video>): $figure
+#@set_attr(src, ./../@data-url): $@
+
+@if( $body//sd-embed ) {
+  @debug: $body//sd-embed
+}
+
+@if( $rendering/analytics/storyType[text()="gallery"] ) {
+  @remove: $body/slideshow/following-sibling::*
+  <div>: $body/slideshow
+}
+
+
+
+#  ___  _                   
+# |__ \| |                  
+#    ) | |_ _ __ _   _  ___ 
+#   / /| __| '__| | | |/ _ \
+#  |_| | |_| |  | |_| |  __/
+#  (_)  \__|_|   \__,_|\___|
+
+?true
+#@replace("^\\s+$", ""): //text()
+
+# ULTIMATE PARSER 9000
+
+$problems: $body
+@while( $problems ) {
+  $test: $body//*[self::blockquote or self::aside or self::figure or (self::img and not(./ancestor::figure)) or self::iframe or self::slideshow or self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)]]
+ 
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br]
+ 
+  @if( $problems ) {
+    $parent: $problems/parent::*
+    @detach: $parent/node()
+    @set_attr("merge", $index): $@
+    <remove>: $parent
+    @after_el("./parent::*"): $problems
+    @combine: $body//self::*[prev-sibling::*/@merge = @merge]
+  }
+}

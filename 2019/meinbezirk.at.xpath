@@ -1,0 +1,247 @@
+~version: "2.1"
+
+##s eaxon 32
+
+##r eaxon gallery rules_too_slow https://www.meinbezirk.at/niederoesterreich/c-freizeit/die-bezirksblaetter-suchen-eure-schoensten-katzenfotos-und-verlosen-einen-einkaufswagen-voller-katzenfutter_a2468211
+##r eaxon not a post but single photo https://www.meinbezirk.at/hartberg-fuerstenfeld/c-wirtschaft/oskar-kern-referierte-im-impulsquartier-loipersdorf_a2388144
+
+
+##r eaxon content order wrong ("Tag der offenen Tür auf der Stolzalpe") https://www.meinbezirk.at/murtal/c-lokales/murpirat-kapert-brauhaus_a3227937
+##r eaxon page has no spaces between images in the original https://www.meinbezirk.at/leibnitz/c-lokales/eine-messe-mit-handschlagqualitaet_a3224025
+
+#r missing facebook link https://www.meinbezirk.at/innsbruck/c-freizeit/tirol-schnappschuesse-juli-2017_a2179103
+
+#r nested https://www.meinbezirk.at/doebling/c-freizeit/mein-advent-kalender-fuer-euch-am-12-dezember_a2336368
+
+#r missing gallery https://www.meinbezirk.at/event/innsbruck/c-brauchtum-kultur/miederermusikmittwoch_e287448
+
+#r facebook posts instead of videos https://www.meinbezirk.at/klagenfurt/c-politik/mit-videos-reden-wir-darueber-drogenproblematik-in-klagenfurt_a2187770
+
+#r broken markup https://www.meinbezirk.at/murtal/c-wirtschaft/neues-werk-mit-akademie-und-fitnessstudio_a3307512
+
+# report missing apa https://www.meinbezirk.at/telfs/c-lokales/brueckenteile-eingehoben-zirl-nun-direkt-mit-unterperfuss-verbunden_a3288168
+
+# report nested https://www.meinbezirk.at/guessing/c-leute/auf-burg-guessing-klingt-es-weihnachtlich_a3108138
+
+
+##r FINDNEW eaxon missing text https://www.meinbezirk.at/graz/c-wirtschaft/grazer-tueroeffner_a916028
+
+site_name: "meinbezirk.at"
+##cdo
+#@replace("\\s", " "): //text()
+##
+
+article: //article[has-class("article-main")]
+body: $article//div[@id="content-main"]
+
+article: //*[has-class("eventitem-detail")]
+body: //*[has-class("eventitem-detail")]
+@if_not( $body ) {
+  @append(<div>): $article
+  body: $@
+}
+
+header: $article//header
+
+@set_attr(href, "./ancestor::a/@href"): $body//a//img
+
+kicker: $header/h1/div[has-class("kicker")]
+title: $header/h1[normalize-space()]/text()
+@replace("^\\s+(.*?)\\s+$", "$1"): $title
+
+@replace("px", ""): //img/@width
+<pic>: //img[@width<160]
+
+@json_to_xml: //head//script[@data-type="application/ld+json"]
+@datetime: $@/datePublished
+published_date: $@
+
+# fallback
+@replace(",|\\.|uhr", "", "i"): //ul[has-class("article-meta")]/li[1]
+@datetime(0, "de", "dd MMMM y HH:mm"): $@
+published_date: $@
+
+# report https://www.meinbezirk.at/st-poelten/c-bauen/jetzt-sanieren-und-die-heizung-erneuern_a2193897
+#cdo{
+@wrap_inner(<b>): $body//*[has-class("article-subline")]
+#}else{
+#@remove: $body//*[has-class("article-subline")]
+#}
+$a: $article//div[has-class("article-author")][1]//div[has-class("article-author-text-block")]/a[has-class("article-author-link")]
+@combine(", "): $a/next-sibling::a[has-class("article-author-link")]
+author: $a
+#diffonly{
+#author_url: $author/@href
+#}
+cover: //div[has-class("article-hero-image")]//img
+cover!: //div[has-class("article-hero-image")]//figure
+cover!: //div[has-class("article-image-post-image")]//img
+cover!: //div[has-class("article-image-post-image")]//figure
+
+@set_attr(src, @data-src): //img
+@set_attr(srcset, @data-srcset): //img
+
+<th>: $body//div[(contains(@style, "background-color:#f8f8f8") or has-class("callout")) and not(.//table) and has-class("event-item-dates-container")]
+@set_attr(align, left): $@
+@wrap(<tr>)
+@wrap(<table>, border, 0): $@
+
+<hr_container>: $body//div[(contains(@style, "background-color:#f8f8f8") or has-class("callout")) and not(.//table)]
+$table: $@
+@wrap(<p>): $table//a[has-class("button")]
+# @wrap(<b>): $table//*[1 and self::h3]
+# @set_attrs(border, 0): $table
+# @set_attr(align, left): $table[not(@align)]
+# @wrap_inner(<th>, align, @align): $table
+
+@before(<hr>): $body//hr_container
+@after(<hr>): $body//hr_container
+
+##r double hr https://www.meinbezirk.at/klagenfurt/c-lokales/projekte-fuer-kaernten-best-of-the-rest-muss-mobiler-werden_a1871880
+@remove: $body//hr/next-sibling::hr
+
+# EMBEDS
+
+# report https://www.meinbezirk.at/tennengau/c-lokales/wenn-die-liebe-zur-musik-mutter-und-sohn-verbindet_a3290331
+$embed: $body//div[has-class("social-media-embed")]
+<iframe>: $embed[@data-type="youtube"]
+@set_attr(src, "https://youtube.com/embed/", @data-videoid): $@
+#do{
+#@unsupported
+#}
+
+#nr instagram embed https://www.meinbezirk.at/c-news/kate-middleton-diese-regel-bricht-sie-mit-voller-absicht_a2602112
+#nr ^ https://www.meinbezirk.at/c-news/nach-kristen-stewart-darum-sind-robert-pattinson-und-emma-watson-das-perfekte-paar_a2371219
+#nr facebook embed https://www.meinbezirk.at/st-veit/c-sport/uniqa-sonnenlauf-2018-in-stveitglan-zwei-der-tollsten-veranstaltungen-im-rahmen-des-zweitaegigen-events-der-besold-bambini-lauf-und-der-lauf-des-bewegungskindergartens-stveitglan_a2588099
+
+##nr vimeo embed https://www.meinbezirk.at/hall-rum/c-leute/keep-on-rockin-das-war-der-bandwettbewerb-tirol-rockt-video_a1061706
+
+# report missing maps https://www.meinbezirk.at/leibnitz/c-freizeit/das-winterwonderland-der-luft-bar-360-laedt-ein_a3048387
+##r missing maps https://www.meinbezirk.at/neusiedl-am-see/c-profis-aus-der-region/taxi-laimer_a2443998
+<iframe>: $embed[@data-type="facebook"]
+$facebook: $@
+
+##r permalink https://www.meinbezirk.at/kaernten/c-lokales/kleinraeumige-ueberflutungen-und-umgestuerzte-baeume_a3180576
+@set_attr(src, @data-src): $facebook[contains(@data-src, "/permalink.php")]
+
+@set_attr(src, "https://www.facebook.com/plugins/video.php?href=", @data-src): $facebook[contains(@data-src, "/videos/") and not(@src)]
+
+@set_attr(src, "https://www.facebook.com/plugins/post.php?href=", @data-src): $facebook[not(contains(@data-src, "/videos/")) and not(@src)]
+
+<iframe>: $embed[@data-type="vimeo"]
+@set_attr(src, "https://player.vimeo.com/video/", @data-videoid): $@
+<iframe>: $embed[@data-src]
+@set_attr(src, @data-src): $@
+<iframe>: $embed[@data-type="apa"]
+@set_attr(src, "https://uvp.apa.at/embed/", @data-videoid): $@
+
+# report https://www.meinbezirk.at/linz/c-freizeit/beweise-dein-talent-bei-internet-stars-live-und-triff-nebenbei-die-lochis_a3099045
+# todo should be uncommented
+@unsupported: $body//*[@data-participation-event]
+
+
+$script: //script[contains(text(), "var galleryItems")]
+@replace("galleryItems\\.push\\({.*?src: '(.*?)'.*?title: '(.*?)'.*?}\\);", "{\"img\": \"$1\", \"figcaption\": \"$2\"},", "s"): $script
+@replace(".*?var galleryItems = \\[\\];(.*)(?<=// if ggmPhotoSwipe).*", "[$1]", "s"): $script
+@replace("// if ggmPhotoSwipe", "", "s"): $script
+@replace(",\\s*]", "]", "s"): $script
+@json_to_xml: $script
+<slideshow>: $@
+$json: $@
+<figure>: $json/node()
+@html_to_dom: $@/figcaption
+<figcaption>: $@
+@set_attr(src, "./text()"): $json//img
+
+@if( ($json//img)[2] ) {
+  @append_to($body): $json
+}
+@remove: $body//div[contains(@class, "image-loop")]
+
+
+$caption: //figure//figcaption/ul[has-class("media-caption")]
+<p>: $caption/li[not(starts-with(., "hochgeladen von") or starts-with(., "Foto"))]
+<cite>: $caption/li[starts-with(., "hochgeladen von") or starts-with(., "Foto")]
+
+@combine(<br>): $caption/li[1]/following-sibling::li
+<cite>: $caption/li
+
+@combine(<br>): $caption/cite/next-sibling::cite
+
+@remove: $body//div[has-class("article-author") or has-class("article-comments") or has-class("article-like-bar") or has-class("article-social-share-bar") or has-class("unimpressive")]
+# https://www.meinbezirk.at/murtal/c-lokales/viele-veranstaltungen-zum-jubilaeum_a3292716
+@remove: $body//*[has-class("article-sidebar")]
+
+# report NESTED + needsfix https://www.meinbezirk.at/doebling/c-freizeit/moments-und-thoughts-poems-gartengeschichten-reiche-auswahl-an-paradeisern-rezept-und-ueber-die-seele-der-paradeiser_a2842802
+
+##r https://www.meinbezirk.at/bruck-an-der-mur/c-lokales/vorschlag-fuer-heute_a2504050
+$z: $body//*[self::li or self::p or self::table or self::slideshow or self::pic]
+@if_not( $z ) {
+  @prepend_to($body): $cover
+  cover!!: null
+}
+<gal>: $body//slideshow
+<slideshow>: $body//gal[count(./preceding-sibling::*//*[not(self::script)]/text()) > 2 or count(./following-sibling::*//*[not(self::script)]/text()) > 2]
+
+
+?path: /*event.*
+title: $body//h1
+@remove: $body//div[@data-icon-toggle="context-menu"]
+@remove: $body//*[has-class("article-meta")]
+
+<pic>: $body//div[@id="event-item-dates-container"]//i[has-class("fa")]
+$icon: $@
+@set_attrs(width, 32, height, 32)
+@set_attr(src, "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAMAAABEpIrGAAAAflBMVEUAAADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylAB9oGThAAAAKXRSTlMAAQIDBAUGCAkKDA0OERITFRcoQFRnhYmLkpW1vsHHys7P0dPk5vP19zDuJdkAAAC5SURBVDiN5ZDbDoIwEERXoIgXFAVvWBFFwPn/H7TbYoNR0EcSz0PT2T0BBiLN/ALkM3Mn9wAgdalNrkY4N2HLAbv23gMcB/BMqrCgEHVb8AEiwDeJL4InBmdzlJkRMqlpBCnTKQt7/UYtWLSguLJw7xEgyM5fhAkFT9POi6IllLJ8Ez7zo6Drx7H5B/xZNEZAdjUM4WuLpVAkCZ8CIZ8RVjoMqMVf1Dz1lKhYi26d+3qtn0p+FyO1fADJ5EoMsPyJ9QAAAABJRU5ErkJggg=="): $icon[has-class("fa-calendar-alt")]
+@set_attr(src, "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAMAAABEpIrGAAAAhFBMVEUAAADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADOm4ttAAAAK3RSTlMAAQIDCB4fICFAQUJDVlhbXV5fYWtsbW9wm52eoKKjr8rM2drc6evt7/H1JCSLgwAAAOtJREFUOMuFk9lywjAQBFvGHOYGJxAccxnsEO3//18eCC7dzJu0LalWOwO91GhbN1o39Wao8JUtO+nVLTK3Pm3FUlvYxyvxdDAuya8S0CXvzwfrIpfXHZVEdHjWZxJVAZAZ7QmA2UsGrCQOyALUIwW0irGkABlSpoENxzRQc0sDDdoDvswNHQDYW8DdAvYA7MwnTvbn7hyidtr0iC0TCRLn/9UI9esSn0DxMqeCtTfkj74uS2Dw4xFna9zM44aZPi31/cZy700bsf01TwenstM3d3rpZm44B2vDnI9VFsi3mpSnu9a3Yzk24v8HoXt4wXjaxbYAAAAASUVORK5CYII="): $icon[has-class("fa-clock")]
+@set_attr(src, "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAMAAABEpIrGAAAA/1BMVEUAAADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylAB0V/o/AAAAVHRSTlMAAQIDBAUGBwgJCgsODxESExQVFhcaHR4fISIjJiorLDE5PUBHSlFSVVtcXWRnbXB5fIKPkZKVoKitr7S1wMHHyMrR09XX2tzg5Ojr7/Hz9ff5+/3oR4CQAAABBElEQVQYGX3BCTsCURgG0HdaFBpC2SP7kqRsiWSNSIbe//9b3E/uM/fO4hwYpg/aA3r31SIiZU+pNV2EFd7o80oImv2mZR22dI82z4WlTjGsLbrFyoDiCqYJitcpiGyHYh6GbYo8RjJ9KjUYLqk0oO1TeYHhgUoJWp4Chk8qBWgZihR8XSor0HIUDnwtKkfQNqn0YdilMhjDiPNEpQHDJMVNEsI5p1iG6YziuZxCYvWW4g6WGQaVYWvS1kXAAm1bCGrT9O4gaI2mPYQ90uelELZBXxURnB61YQZRdqjVESnxwT85RDvkyAVipL/4aw5xahQtxBqnWEK8E5LX+IdTaR0nYfkB3bh0mDQ99kkAAAAASUVORK5CYII="): $icon[has-class("fa-map-marker-alt")]
+@set_attr(src, "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAMAAABEpIrGAAAAvVBMVEUAAADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylADylACfNwoFAAAAPnRSTlMAAQIDBwgKDQ4PERIUFhobHB4gIiQmKTE0PkJGTU5RUldYWVtcXWJ/g5GSoK+3uby+wMrV3ODi5ujp9/n7/SBacxQAAADFSURBVDhP5ZHXEoIwFAVPQMHesGHvYu/Y8/+fZWIZCSE6PrsPTObuTmAuwC+QeIJhqAOH3kkqg+UjKP1vYNYbDPcRjPnZJkKwoBJlIahKfh8SArT83oQPsZA90Pb4Q0T2QOeLB7pfPNC7+2NU5YF+gI9Nlk8mOi+4L75Gsyawfn/7XANSbD/563uWBvUw1fiduYtnVBICusrq4ZrX+wMZRXAyMuyvk4Iy2IBQWuEP1SsGQ0pde8SDbXDxwoK1+6DPTtC+RW7QJW96ncZQTAAAAABJRU5ErkJggg=="): $icon[has-class("fa-download")]
+
+@wrap(<details>): $body//div[@id="event-dates-dropdown"]
+
+<td>: $body//div[has-class("eventitem-date-buttons")]
+@append_to("./prev-sibling::div/table")
+@set_attrs(colspan, 2, align, center)
+@append_to("./ancestor::table/../next-sibling::details"): $@//button[@data-toggle="event-dates-dropdown"]
+<summary>: $@
+
+
+?true
+
+##r blockquote <br> https://www.meinbezirk.at/linz/c-lokales/wenn-der-wohnraum-zur-belastung-wird_a2405376
+
+@after(<br>): //blockquote//p
+
+$placeholder: "logo-open-graph.png"
+##do eaxon
+image_url: $cover//img/@src
+##
+## <snippet "empty_img">
+@remove: //img[string-length(normalize-space(@src))=0]
+@remove: //pic[string-length(normalize-space(@src))=0]
+## <snippet end>
+
+@append(<placeholder_image_url>): /html
+@append_to(/html/placeholder_image_url): $placeholder
+image_url: //head/meta[(@name="twitter:image" or @property="twitter:image" or @name="og:image" or @property="og:image") and not(contains(@content, /html/placeholder_image_url))]/@content[normalize-space()]
+image_url: $cover//img/@src
+
+## <snippet "letmedie">
+#  ___  _                   
+# |__ \| |                  
+#    ) | |_ _ __ _   _  ___ 
+#   / /| __| '__| | | |/ _ \
+#  |_| | |_| |  | |_| |  __/
+#  (_)  \__|_|   \__,_|\___|
+
+?true
+
+$problems: $body
+@while( $problems ) {
+  $test: $body//*[self::*[has-class("fb-post")] or self::blockquote or self::aside or self::figure or self::img[not(./ancestor::figure)] or self::iframe[not(./ancestor::figure)] or self::slideshow[not(./ancestor::figure)] or self::video[not(./ancestor::figure)] or self::audio[not(./ancestor::figure)] or self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)]]
+ 
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br or ancestor::ul or ancestor::ol or ancestor::li]
+ 
+  @split_parent: $problems
+}
+## <snippet end>

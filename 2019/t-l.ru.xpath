@@ -1,0 +1,94 @@
+~version: "2.0"
+
+site_name: "Тюменская линия"
+
+article: //article
+title: $article/h1
+
+?path_not: /*photo.*
+
+@match(".*,\\s*(.*)", 1): $article//div[has-class("full_news_date")]
+@datetime(0, "ru-RU", "HH:mm dd MM y"): $$/text()
+published_date
+
+body: $article
+author: $body//p[has-class("full_news_autor")]
+
+@remove: $body//p[has-class("full_news_autor")]
+@remove: $body/div[has-class("full_news_soc_date_print")]
+
+<div>: $body//p[.//iframe]
+<div>: $body//p[.//video]
+<div>: $body//p[.//img]
+
+<figure>: //span[./img]
+<figcaption>: $@/em
+
+cover: $body//figure
+
+# slideshow
+<slideshow>: $body//div[has-class("fotorama")]
+<figure>: $@//a
+$figures_slideshow
+@set_attr(src, "./@data-full"): $figures_slideshow//img
+@append(<figcaption>): $figures_slideshow
+$fc: $@
+@set_attr(data-caption, ./../@data-caption): $fc
+@append(@data-caption): $fc
+
+
+# related
+$related_next: $body//a[has-class("full_news_next_page")]
+$batya_p: $related_next/../self::p
+@if_not( $batya_p ) {
+ @wrap(<p>): $related_next
+ $batya_p: $@
+}
+@before_el("./../self::a"): $batya_p//span
+<h1>: $$
+<related>: $batya_p
+
+related_last: //div[has-class("full_news_last_pages")]/div/div
+@append_to($related_last//h3): $related_last//h3/a/text()
+@remove: $related_last//h3/a
+<related>: $related_last
+@append_to($body): $$
+
+@append(<p>): //img
+
+?path: /*photo.*
+
+published_date
+body: $article
+
+@datetime: $article//div[has-class("full_news_date")]/text()
+published_date
+
+author: $body/..//p[has-class("full_news_autor")]
+
+@remove: $body/div[has-class("full_news_soc_date_print")]
+
+@if( $article/p ) {
+ <slideshow>: $body//div[has-class("fotorama")]
+ $k
+}
+
+@if_not( $article/p ) {
+ <div>: $body//div[has-class("fotorama")]
+ $k
+}
+
+<figure>: $k//a
+$figures_slideshow
+
+@replace("pcrx\\d*", "pcrx4000"): $figures_slideshow//img/@src
+@set_attr(src, "./@data-full"): $figures_slideshow//img
+@append(<figcaption>): $figures_slideshow
+$fc: $@
+@set_attr(data-caption, ./../@data-caption): $fc
+@append(@data-caption): $fc
+
+@replace("^\u00a0$", ""): $body//p
+image_url: $body//img/@src
+
+<div>: //a[./img]

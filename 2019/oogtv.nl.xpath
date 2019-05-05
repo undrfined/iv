@@ -1,0 +1,114 @@
+~version: "2.1"
+
+site_name: "OOG"
+article: //article[has-class("single-article")]
+header: $article/div[has-class("row")][1]
+body: $article/div[has-class("row")][2]/div[has-class("article-content")]
+title: $header//h1[has-class("entry-title")]
+@datetime(0, "nl", "dd MMMM y HH:mm"): $header//div[has-class("post-info")]
+published_date: $@
+author: $header//span[has-class("author")]
+
+@remove: $body/div[has-class("categories")]
+@remove: $body//ul[has-class("tags")]
+@remove: $body//div[has-class("comments")]
+@remove: $body/div[has-class("entry-content")]/next-sibling::hr
+@remove: $body//div[has-class("addtoany_share_save_container")]
+
+<figure>: $body/div[has-class("big-image")]
+@append_to("./prev-sibling::figure"): $@/next-sibling::div[has-class("caption")]
+<figcaption>: $@
+
+## https://www.oogtv.nl/2013/02/ns-app-wijst-reiziger-de-weg-in-volle-trein/
+<figure>: $body//div[has-class("oog-player-audio")]
+$figure: $@
+@set_attr(caption, ".//audio/@src"): $@
+@replace(".*/(.*?)$", "$1"): $@
+@append(@caption): $figure
+@wrap(<figcaption>): $@
+
+<related>: $body//div[has-class("related-posts")]
+<span>: $body//h2
+
+cover: $body[count(./div[has-class("entry-content")]/*) > 0]/figure[has-class("big-image")]
+
+@remove: //noscript
+
+# https://www.oogtv.nl/2016/10/fc-groningen-onderuit-in-slotminuut/
+$wp_playlist: $body//div[has-class("wp-playlist")]
+@remove: $wp_playlist//audio
+@json_to_xml: $wp_playlist//script[has-class("wp-playlist-script")]
+<figure>: $@/tracks/item
+$audio: $@
+<audio>: $audio/src
+@set_attr(src, .): $@
+<figcaption>: $audio/description
+@before_el("./ancestor::xml"): $audio
+@remove: $audio/next-sibling::xml
+
+
+?not_exists: $article
+article: //div[has-class("article-holder")]/article
+body: $article
+cover: $body/*[1 and img]/img
+title: $body/h1[not(img)]
+
+?true
+
+@remove: $body//div[has-class("lastest-episode")]
+@remove: $body//div[has-class("addtoany_share_save_container")]
+
+<pic>: $body//img[@width and @height and @width < 150 and @height < 150]
+
+$a: $body//a[starts-with(@href, "mailto:")]
+@urldecode: $a/@href
+
+$placeholder: "OOG.svg"
+## <snippet "image_url">
+@append(<placeholder_image_url>): /html
+@append_to(/html/placeholder_image_url): $placeholder
+image_url: //head/meta[(@name="twitter:image" or @property="twitter:image" or @name="og:image" or @property="og:image") and not(contains(@content, /html/placeholder_image_url))]/@content[normalize-space()]
+image_url: $cover//img/@src
+image_url: $body//img/@src
+image_url: ""
+## <snippet end>
+
+## <snippet "imghref">
+# lowercase
+@replace("\\.png(?>\\?.*|)(?>#.*|)$", ".png", "i"): //a[.//img]/@href
+@replace("\\.jpg(?>\\?.*|)(?>#.*|)$", ".jpg", "i"): //a[.//img]/@href
+@replace("\\.jpeg(?>\\?.*|)(?>#.*|)$", ".jpeg", "i"): //a[.//img]/@href
+@replace("\\.gif(?>\\?.*|)(?>#.*|)$", ".gif", "i"): //a[.//img]/@href
+# image links
+@set_attr(href, "./ancestor::a/@href"): //a[(not(contains(@href, "wikipedia")) and not(contains(@href, "gettyimages"))) and not(ends-with(@href, ".png") or ends-with(@href, ".jpg") or ends-with(@href, ".jpeg") or ends-with(@href, ".gif"))]//img
+
+## <snippet end>
+@set_attr(src, "./ancestor::a/@href"): //a//img[not(@href)]
+
+## <snippet "s">
+@replace("\\s", " "): //text()
+## <snippet end>
+## <snippet "letmedie">
+?true
+
+$problems: $body
+@while( $problems ) {
+  $test: $body//*[self::*[has-class("fb-post")] or self::blockquote or self::aside or self::figure[not(./ancestor::slideshow)] or self::img[not(./ancestor::figure)] or self::iframe[not(./ancestor::figure)] or self::slideshow or self::video[not(./ancestor::figure)] or self::audio[not(./ancestor::figure)] or self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)]]
+
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote[not(has-class("instagram-media"))] or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br or ancestor::ul or ancestor::ol or ancestor::li]
+
+  @split_parent: $problems
+}
+## <snippet end>
+
+?path: /*esns.*
+?path: /*radio/*oog-sport.*
+?path: /*radio/*ochtendshow.*
+?path: /*radio/*programmering.*
+?path: /*radio/*oogopdemiddag.*
+?path: /*oogapp.*
+?path: /*info.*
+?path: /*anbi.*
+?path: /*voorwaarden-ooggetuige-app.*
+
+body!!: null

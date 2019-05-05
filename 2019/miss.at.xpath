@@ -1,0 +1,78 @@
+~version: "2.1"
+
+site_name: "miss"
+
+##s dylen 6
+
+body: //article[has-class("single-post-content")]
+title: $body/h1[has-class("post-title")]
+meta: $body/ul[has-class("post-meta")]
+author: $meta/li[has-class("meta-author")]/a
+author_url: $author/@href
+
+<figure>: $body//div[has-class("single-post-image")]
+@append_to("./prev-sibling::figure"): $body//div[has-class("wp-caption-text")]
+<figcaption>
+
+cover: $body/figure[has-class("single-post-image")]
+
+<slideshow>: $body//div[has-class("post-gallery") and count(preceding-sibling::p) >= 1]
+@unsupported: $body//div[@id="mc_embed_signup"]
+
+<figure>: $body//div[has-class("post-gallery-item")]
+<figcaption>: $@/div[has-class("text-center")]
+<cite>: $@/span
+
+@unsupported: $body//a[has-class("gie-single")]
+<pic>: $body//img[has-class("smallInlinePic")]
+
+@unsupported: $body//a[contains(@href, "pinterest.com") and @data-pin-do="embedPin"]
+
+@unsupported: $body//blockquote[has-class("reddit-card")]
+
+@remove: $meta
+@remove: $title/next-sibling::div[has-class("text-center")]
+$t: $body//div[starts-with(@id, "taboola-below-article-thumbnails")]
+@remove: $t/following-sibling::*
+@remove: $t
+@remove: $body//section[has-class("related-articles") or has-class("related-posts")]
+
+<pic>: $body//img[has-class("emoji")]
+
+## <snippet "imghref">
+# lowercase
+@replace("\\.png(?>\\?.*|)(?>#.*|)$", ".png", "i"): //a[.//img]/@href
+@replace("\\.jpg(?>\\?.*|)(?>#.*|)$", ".jpg", "i"): //a[.//img]/@href
+@replace("\\.jpeg(?>\\?.*|)(?>#.*|)$", ".jpeg", "i"): //a[.//img]/@href
+@replace("\\.gif(?>\\?.*|)(?>#.*|)$", ".gif", "i"): //a[.//img]/@href
+# image links
+@set_attr(href, "./ancestor::a/@href"): //a[(not(contains(@href, "wikipedia")) and not(contains(@href, "gettyimages"))) and not(ends-with(@href, ".png") or ends-with(@href, ".jpg") or ends-with(@href, ".jpeg") or ends-with(@href, ".gif"))]//img
+
+## <snippet end>
+
+<iframe>: $body//*[has-class("pa-embeded-image")]
+@set_attr(src, "https://picsart.com/e/", ./img/@data-id): $@
+@remove: $$/*
+@unsupported: $body//form
+@unsupported: $body//div[has-class("tumblr-post")]
+@unsupported: $body//div[has-class("whatspro-widget")]
+@unsupported: $body//div[has-class("tickcounter")]
+
+# @remove: $body//iframe[has-class("wp-embedded-content")]
+@remove: $body//blockquote[has-class("wp-embedded-content")]
+##cdo dylen
+@replace("\\s", " "): //text()
+##
+
+## <snippet "letmedie">
+?true
+
+$problems: $body
+@while( $problems ) {
+  $test: $body//*[self::*[has-class("fb-post")] or self::blockquote or self::aside or self::figure[not(./ancestor::slideshow)] or self::img[not(./ancestor::figure)] or self::iframe[not(./ancestor::figure)] or self::slideshow or self::video[not(./ancestor::figure)] or self::audio[not(./ancestor::figure)] or self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)]]
+
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote[not(has-class("instagram-media"))] or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br or ancestor::ul or ancestor::ol or ancestor::li]
+
+  @split_parent: $problems
+}
+## <snippet end>

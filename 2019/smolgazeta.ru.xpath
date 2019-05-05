@@ -1,0 +1,54 @@
+~version: "2.1"
+
+site_name: "SMOLGAZETA.RU"
+##s sergei 2
+
+# Main content
+body: //div[has-class("post-content")]/article
+cover: $body/div[has-class("post-main-img")]//img
+title: $body/h2[has-class("title-21")]
+meta: $body/div[has-class("meta-tp-2")]
+@datetime(0, "ru", "dd MMMM y года в HH:mm"): $meta/div[has-class("date")]//span
+published_date: $@
+
+# Related
+
+##do sergei
+#<related>: //div[has-class("pst-box") and prev-sibling::div[has-class("pst-block")]]
+#@append_to($body): $@
+##
+
+# @remove: $@//div[has-class("pst-box-inner")]/*[position() > 5]
+
+# Meta
+@remove: $body/a[has-class("category-tp-1")]
+@remove: $meta
+##cdo sergei
+author: ""
+##
+
+# Slideshow
+<slideshow>: $body//div[has-class("gallery")]
+@set_attr(src, "./../@href"): $@//a[has-class("js-gallery-link")]/img
+
+##cdo sergei
+
+## <snippet "s">
+@replace("\\s", " "): //text()
+## <snippet end>
+#
+##
+
+## <snippet "letmedie">
+?true
+
+$problems: $body
+@while( $problems ) {
+  $test: $body//*[self::*[has-class("fb-post")] or self::blockquote or self::aside or self::figure or self::img[not(./ancestor::figure)] or self::iframe[not(./ancestor::figure)] or self::slideshow[not(./ancestor::figure)] or self::video[not(./ancestor::figure)] or self::audio[not(./ancestor::figure)] or self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)]]
+
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote[not(has-class("instagram-media"))] or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br or ancestor::ul or ancestor::ol or ancestor::li]
+
+  @split_parent: $problems
+}
+## <snippet end>
+

@@ -1,0 +1,140 @@
+~version: "2.1"
+
+##s pavel 29
+##s uzbek 28
+##s andrew 31
+
+
+##c <p> in description https://kazanfirst.ru/stories/11
+##r pavel,uzbek,andrew missing VK post https://kazanfirst.ru/posts/465521
+
+##cdo pavel
+channel: "@kazanfirst"
+##
+site_name: "KazanFirst"
+
+
+
+body: //div[@data-type and @data-type!="story"]/section[@data-href]
+
+##cdo uzbek
+@append_to("./prev-sibling::p/b[not(./*)]"): $body/p[b and string-length(normalize-space(.)) < 1]/next-sibling::p
+##
+
+<figure>: $body/div[has-class("big-preview-img")]
+cover
+<cite>: $@/div[has-class("photo-author")]
+@wrap(<figcaption>)
+
+<video>: $body//div[has-class("jp-my-container") and not(.//video)]//div[has-class("video-player")]
+@set_attr(src, @data-video-url): $@
+
+@set_attr(src, "./ancestor::div[has-class(\"jp-my-container\")]/@video-url"): $body//div[has-class("jp-my-container")]//video[string-length(@src) = 0]
+
+##do pavel
+#@prepend_to($body): $body[.//div[has-class("slider-container")] and not(.//div[has-class("slider-block")])]//*[has-class("inner-item-desc")]
+##?
+ @prepend_to($body): $body//*[has-class("inner-item-desc") and (count(./*) > 1 or string-length(.) > 100)]
+##
+<inbody>: $@
+@wrap_inner(<b>): $@/p
+
+header: $body//div[has-class("inner-item-wrap")]
+title: $body//*[has-class("inner-item-name")]
+subtitle: $body//*[has-class("inner-item-desc") and not(self::inbody)]
+@remove: $header
+
+
+tags: $body/div[has-class("with-tag")]/div[has-class("time")]
+@remove: $tags/*[has-class("tag")]
+
+$author: $body//div[has-class("authors-list")]/*[has-class("author")]
+@remove: $author/div[has-class("name-hint") or has-class("img")]
+@combine(", "): $author/next-sibling::a
+author: $author
+
+@append(<time>): //head
+
+@replace(".*?(\\d{1,2}:\\d{1,2})\\s*/\\s*(\\d{1,2})\\s*([а-яА-Я]+)\\s*(\\d{4}).*", "$1 $2 $3 $4"): $tags
+
+@datetime(0, "ru", "HH:mm dd MMMM y"): $@
+@append_to("//head/time"): $@
+@set_attr(time, "./text()"): //head/time
+
+@replace(".*?(\\d{1,2}:\\d{1,2})\\s*/\\s*(\\d{1,2})\\s*([а-яА-Я]+).*", "$1 $2 $3"): $tags
+@datetime(0, "ru", "HH:mm dd MMMM"): $@
+@append_to("//head/time"): $@
+
+@set_attr(time, "1 Jan today + ", "./text()", " second"): //head/time[. < 31536000]
+# @set_attr(time, .): //head/time[. > 31536000]
+@datetime: //head/time/@time
+published_date: $@
+
+@remove: $tags
+
+@remove: $body/*[has-class("social-inner-block") or has-class("material-information") or has-class("story-wrap") or has-class("comments-block-wrap") or has-class("offer-news") or has-class("list-tablet-container") or has-class("with-tag") or has-class("horizontal-banner-wrap") or has-class("infinite-fade") or has-class("social-likes") or has-class("inner-item-wrap")]
+
+<blockquote>: $body//div[has-class("quote-block")]
+$blockquote: $@
+<cite>: $blockquote//div[has-class("signature")]
+@remove: $blockquote//*[has-class("share-icon")]
+
+$slideshow: $body//div[has-class("slider-container")]
+<img>: $slideshow//div[has-class("inner-slider")]/div[contains(@style, "background")]
+@background_to_image: $@
+@remove: $slideshow//div[has-class("slider-arrow") or has-class("zoom-slider") or has-class("slide-count")]
+<figcaption>: $slideshow//div[has-class("desc-slider")]
+@remove: $body//div[has-class("slides-previews")]
+<slideshow>: $slideshow[ancestor::div[has-class("slider-block")]]
+<figure>: $slideshow[not(.//img)]
+
+<iframe>: $body//div[has-class("infogram-embed")]
+@set_attr(src, "https://e.infogram.com/", @data-id, "?src=embed"): $@
+
+@remove: $body//div[has-class("video-container")]//*[has-class("time-container") or self::img]
+
+@unsupported: $body//div[has-class("apester-media")]
+
+$meta: //head/meta
+image_url: $meta[(@property="twitter:image" or @name="twitter:image" or @property="og:image" or @name="og:image") and not(contains(@content, "placeholder"))]/@content[normalize-space()]
+image_url: $body//img/@src
+
+## <snippet "vk">
+@before(<vk>): /html/body
+@replace(".*(?<=VK\\.Widgets\\.Post\\()['\"](.*?)['\"]\\s*?,\\s*([\\d-]+)\\s*?,\\s*([\\d-]+)\\s*?,\\s*['\"](.*?)['\"].*(?=\\)).*", "<iframe did=\"$1\" src=\"https://vk.com/widget_post.php?owner_id=$2&post_id=$3&hash=$4\"></iframe>"): //body//script[contains(., "VK.Widgets.Post")]
+@html_to_dom: $@
+$doms: $@
+@append_to(/html/vk): $doms/iframe[@did=./ancestor::html/body//div/@id]
+@append_to("./ancestor::html/body//div[@id=(/html/vk/iframe/@did)[1]]"): $@
+@remove: $doms
+
+## <snippet end>
+
+##cdo pavel uzbek
+## <snippet "s">
+@replace("\\s", " "): //text()
+## <snippet end>
+##
+
+## <snippet "letmedie">
+#  ___  _                   
+# |__ \| |                  
+#    ) | |_ _ __ _   _  ___ 
+#   / /| __| '__| | | |/ _ \
+#  |_| | |_| |  | |_| |  __/
+#  (_)  \__|_|   \__,_|\___|
+
+?true
+
+$problems: $body
+@while( $problems ) {
+  $test: $body//*[self::*[has-class("fb-post")] or self::blockquote or self::aside or self::figure or self::img[not(./ancestor::figure)] or self::iframe[not(./ancestor::figure)] or self::slideshow[not(./ancestor::figure)] or self::video[not(./ancestor::figure)] or self::audio[not(./ancestor::figure)] or self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)]]
+ 
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br or ancestor::ul or ancestor::ol or ancestor::li]
+ 
+  @split_parent: $problems
+}
+## <snippet end>
+
+
+

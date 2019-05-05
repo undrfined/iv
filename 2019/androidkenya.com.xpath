@@ -1,0 +1,118 @@
+~version: "2.0"
+
+##r missing captions https://androidkenya.com/2017/08/infinix-note-4-review/
+##r missing link telegram https://androidkenya.com/2018/06/latest-telegram-update-features/
+
+##cdo
+@replace("\\s", " "): //text()
+##
+
+##cdo
+channel: "@androidkenya"
+##
+
+article: //div[@itemtype="http://schema.org/Article"]/div
+single_post_entry_content: $article/div[has-class("single_post_entry_content")]
+single_content_header: $article/div[has-class("single_content_header")]
+
+title: $single_post_entry_content/h1[@itemprop="headline"]
+author: $single_post_entry_content//a[@rel="author"]
+author_url: $author/@href
+
+cover: $single_content_header//img
+cover!: $single_content_header//video
+cover!: $single_content_header//iframe
+
+body: $article/div[@itemprop="articleBody"]
+
+
+<figure>: $article//*[has-class("wp-caption")]
+<figcaption>: $@//*[has-class("wp-caption-text")]
+
+@append(<related>): $body
+$div: $@
+<div>: $body//div[has-class("ctaButton")]/ancestor::div[1][./a]
+$dd: $@
+<span>: $@//*[has-class("ctaText")]
+@before_el("./ancestor::a"): $@
+@append_to($div): $dd
+
+@json_to_xml: $body//div[has-class("jetpack-slideshow")]/@data-gallery
+<figure>: $@/*
+$figure: $@
+<figcaption>: $figure/caption
+<img>: $figure/src
+@set_attr(src, ./text()): $@
+@append_to("./ancestor::div[1]"): $figure
+<slideshow>: $figure/..
+
+<slideshow>: $body//div[has-class("gallery")]
+$gallery: $@
+<figcaption>: $gallery//*[has-class("wp-caption-text")]
+<figure>: $gallery//*[has-class("gallery-item")]
+
+<table>: $body//div[has-class("wpappbox")]
+$wpappbox: $@
+<td>: $wpappbox/div
+<pic>: $@//img
+@set_attrs(width, 96, height, 96): $@
+@before_el("./prev-sibling::td[has-class(\"applinks\")]"): $wpappbox/td[has-class("appdetails")]
+<a>: $wpappbox/td[has-class("applinks")]//span[@data-onmouseover]
+@set_attr(href, ".//ancestor::table/td[has-class(\"qrcode\")]/pic/@src"): $@
+@after_el("./.."): $$
+@append(@title): $wpappbox//div[has-class("rating-stars")]
+@remove: $wpappbox//td[has-class("qrcode")]
+
+<footer>: $body//div[has-class("sa-source-wrapper")]
+$footer: $@
+<span>: $@/p[has-class("news-source")]
+@prepend(" "): $@
+##do
+#@remove: $footer
+##
+
+@set_attr(href, "./ancestor::a/@href"): $body//a[not(contains(@href, ./ancestor::html/head/meta[@property="og:url"]/@content)) and not(./ancestor::slideshow)]//img
+
+@remove: $body/*[has-class("mashsb-container")]
+@remove: $body/*[has-class("sharedaddy")]
+@remove: $body//a[contains(@href, "t.me/androidkenya")][.//img]
+@remove: $article//noscript
+
+@set_attr(src, @data-orig-file): //img[@data-orig-file]
+@set_attr(srcset, @data-lazy-srcset): //img[@srcset]
+@replace("(http.+?)\\s+?(?=\\d+w)(\\d+)w", "<link src=$1 res=$2>"): //img/@srcset
+@append(@srcset): //img[@srcset]
+@html_to_dom: $@
+@set_attr(src, .//link[not(../link/@res>@res)]/@src): //img[@srcset]
+
+@replace(".+(i\\d+\\.wp\\.com/+.*?)(\\?.*|$)", "//$1"): //img/@src
+# @replace(".+(i\\d+\\.wp\\.com/+.*?)", "//$1"): //img/@src
+#  ___  _                   
+# |__ \| |                  
+#    ) | |_ _ __ _   _  ___ 
+#   / /| __| '__| | | |/ _ \
+#  |_| | |_| |  | |_| |  __/
+#  (_)  \__|_|   \__,_|\___|
+
+?true
+
+<i>: $body//*[contains(@style, "italic")]
+<u>: $body//*[contains(@style, "underline")]
+<b>: $body//*[contains(@style, "bold")]
+
+# ULTIMATE PARSER 9000
+$problems: $body
+@while( $problems ) {
+  $test: $body//*[self::blockquote or self::aside or self::figure or (self::img and not(./ancestor::figure)) or self::iframe or self::slideshow or self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)]]
+ 
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br]
+ 
+  @if( $problems ) {
+    $parent: $problems/parent::*
+    @detach: $parent/node()
+    @set_attr("merge", $index): $@
+    <remove>: $parent
+    @after_el("./parent::*"): $problems
+    @combine: $body//self::*[prev-sibling::*/@merge = @merge]
+  }
+}

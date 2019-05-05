@@ -1,0 +1,169 @@
+~version: "2.0"
+
+# needsfix report https://www.dagsavisen.no/nyemeninger/bruk-solkrem-h%C3%B8y-faktor-1.973118
+
+# not diffonly {
+@replace("\\s", " "): //text()
+# }
+
+# Published date
+@datetime: //meta[@property="og:article:published_time"]/@content
+published_date
+
+site_name: "Dagsavisen"
+?not_exists: //div[has-class("paywall--blue")]
+!not_exists: //div[has-class("authorArticleList")]
+!exists: //article[@id="article-printable"]
+!path_not: /*nyemeninger/*.*
+
+article: //article[@id="article-printable"]
+body: $article
+#@set_attr(href, "./ancestor::a/@href"): $body//a//img
+#<div>: $body//a[.//img]
+#<div>: $body//p[.//img]
+#<div>: $body//p[.//iframe]
+
+@wrap_inner(<em>): $body//*[contains(@style, "font-style: italic")]
+@wrap_inner(<b>): $body//*[contains(@style, "font-weight: bold")]
+
+@set_attr(src, @data-src): //img[@data-src]
+@match("(.*?)\\?.*", 1): //img[contains(@src, "?")]/@src
+title: $article//header/h1
+subtitle: $article//header/h2
+
+
+# Author
+@append(<div>): //head
+$au_div: $@
+@append_to($au_div): $article//div[has-class("article-metadata-byline")]/a
+@replace("^\\s*(.*?)\\s*$", "$1"): $au_div/a
+@combine(", "): $au_div/a/following-sibling::*
+author: $au_div
+# diffonly {
+author_url: $author/@href
+# }
+
+@prepend_to($body): $body//div[has-class("facts")]
+@append(<hr>): $@
+
+@remove: $article//div[has-class("byline-meta")]
+
+# Carousel
+$carousel: $article//div[has-class("carousel")]
+@remove: $carousel//div[has-class("printableImage")] # Thumbnail
+@remove: $carousel//div[has-class("carousel-show-caption")] # Open full
+<figure>: $carousel//div[has-class("item")]
+$figure_carousel
+<figcaption>: $figure_carousel/div[has-class("carousel-caption")]
+@append(<figcaption>): $figure_carousel[not(./figcaption)]
+<cite>: $figure_carousel/div[has-class("carousel-photo-by")]
+@append_to("./../figcaption"): $@
+<slideshow>: $carousel[count(//figure)>1]
+$cc: $@
+cover: $carousel[1]//figure
+@prepend_to($body): $cc
+
+
+
+
+@remove: //div[has-class("printableCaption")]
+
+# Inline images
+<figure>: $body//div[.//img and ./em and not(./em//img)]
+<figcaption>: $@/em
+
+# Footer
+@remove: $article//footer
+
+
+# Sidebar
+@remove: $article//div[has-class("article-sidebar")]
+
+
+
+?path: /*nyemeninger/*.*
+
+
+main: //div[@id="main"]
+body: $main//div[has-class("article-main-col")]
+
+# todo needsfix https://www.dagsavisen.no/nyemeninger/hvor-lenge-har-solskj%C3%A6r-jobben-1.1457494
+@replace("(.*)\\s*", "$1"): $main//div[has-class("badges")]//p[has-class("author-name")]
+@before_el(//head): $main//div[has-class("badges")]//p[has-class("author-name")]
+@replace("^\\s*(.*?)\\s*$", "$1"): $@
+@combine(", ") :$@
+author: $@
+
+<figure>: $main/div[has-class("article-page-featured-image")]//div[has-class("topImageContainer")]
+$figure_cover: $@
+@remove: $figure_cover//div[has-class("topImageCaptionControl")]
+<figcaption>: $figure_cover//div[has-class("topImageCaption")]
+@append(<figcaption>): $figure_cover[not(.//figcaption)]
+<cite>: $figure_cover//div[has-class("topImageInfo")]
+@append_to("./../figcaption"): $@
+
+cover: $figure_cover
+meta1: $main/div[has-class("article-page-featured-image")]/next-sibling::div[has-class("row")][.//h1]
+title: $meta1//h1
+meta2: $main/div[has-class("article-page-featured-image")]/next-sibling::div[has-class("row")]/next-sibling::div[has-class("row")]
+subtitle: $meta2//p[has-class("deck")]
+
+#author: $main//div[has-class("badges")]/p[has-class("author-name")]
+
+@remove: $body/div[has-class("tag-holder-for-article")]
+@remove: $body//div[has-class("writer-subscribe-div")]
+
+?true
+
+# diffonly {
+#@replace("LES OGSÅ", "LES OGSÅ:", "i"): //*[starts-with(text(), "Les også") or starts-with(text(), "LES OGSÅ")][./next-sibling::a or .//a]/text()
+# }
+
+#@match("LES OGSÅ:", 0, "i"): $@
+
+# Inline related
+#<related>: $body//*[starts-with(text(), "Les også") or starts-with(text(), "LES OGSÅ")][./next-sibling::a or .//a]
+#$related+
+#@append_to("./prev-sibling::*"): $@/next-sibling::a
+#@wrap(<h1>): $related//text()
+
+
+#@before_el("./.."): //a/*[starts-with(text(), "LES OGSÅ")]
+
+#@after_el("./ancestor::figure"): $related
+#@after_el("./ancestor::p"): $related
+#@after_el("./ancestor::em"): $related
+
+# videoWrapper
+@match("var videoId = \"(.*?)\";", 1): $body//div[has-class("videoWrapper")][./iframe[starts-with(@id, "iframe_video_")]]/next-sibling::script
+@set_attr(src, "./../next-sibling::script/text()"): $@/prev-sibling::*/iframe
+
+
+#  ___  _                   
+# |__ \| |                  
+#    ) | |_ _ __ _   _  ___ 
+#   / /| __| '__| | | |/ _ \
+#  |_| | |_| |  | |_| |  __/
+#  (_)  \__|_|   \__,_|\___|
+
+?true
+
+@replace("(.*?\\?).*", "$1w=2560"): //img/@src
+
+# ULTIMATE PARSER 9000
+
+$problems: $body
+@while( $problems ) {
+  $test: $body//*[self::blockquote or self::aside or self::figure or (self::img and not(./ancestor::figure)) or self::iframe or self::slideshow or self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)]]
+ 
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br or ancestor::ul]
+ 
+  @if( $problems ) {
+    $parent: $problems/parent::*
+    @detach: $parent/node()
+    @set_attr("merge", $index): $@
+    <remove>: $parent
+    @after_el("./parent::*"): $problems
+    @combine: $body//self::*[prev-sibling::*/@merge = @merge]
+  }
+}

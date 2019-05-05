@@ -1,0 +1,10 @@
+~version: "2.1"
+
+@append(<div>): //head
+body: $@
+
+@append(<iframe>): $@
+@set_attr(src, "https://youtu.be/dQw4w9WgXcQ"): $@
+
+@prepend(<p>): $body
+@append("Good luck & have fun with this domain! 😍"): $@

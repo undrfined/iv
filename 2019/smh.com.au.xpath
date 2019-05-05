@@ -1,0 +1,283 @@
+~version: "2.0"
+
+@match("^window.INITIAL_STATE = ({.*})$", 1): //script[starts-with(text(), "window.INITIAL_STATE = ")]
+@json_to_xml: $@
+json: $@
+
+page: $json/page/item[1]/asset
+@html_to_dom: $page/asset/body
+
+body: $$
+
+@if( $page/assetType[text()="bespoke"] ) {
+  body!!: null
+}
+
+@map( $page//resources/* ) {
+  $resource: $@
+  $data: $resource/data
+  $type: $resource/type
+  $supported: null
+  
+  @if( $type[text()="talkingPoints"] ) {
+    @remove: $data/type
+    <h5>: $data/title
+    <ul>: $data/items
+    <li>: $@/*
+    <div>: $data
+    @prepend_to($body): $@
+    $supported: ""
+  }
+  
+  @if_not( $supported ) {
+    @append_to($body): $resource
+    @unsupported: $resource
+  }
+}
+@if( $page/assetType[text()="featureArticle"] ) {
+  <figure>: $page/featuredImages/landscape16x9/data
+  cover: $@
+  <figcaption>: $cover/caption
+  <cite>: $cover/credit
+  @append_to("./parent::*/figcaption"): $@
+  <img>: $cover/id
+  @set_attr(src, "https://static.ffx.io/images/", "./text()"): $@
+}
+
+@html_to_dom: $page/asset/headlines/headline
+title: $@
+@html_to_dom: $page/asset/intro
+subtitle: $@
+@datetime: $page/dates/published
+published_date
+
+author: $page/asset/byline
+
+@htmldecode: $page/asset/bodyPlaceholders//*//text()
+
+@append_to(//head): $page/asset/bodyPlaceholders
+$body_placeholders
+
+@map( $body_placeholders/* ) {
+  $placeholder: $@
+
+  $data: $placeholder/data
+  $block: $body//x-placeholder[@id=./ancestor::html[1]/head/bodyPlaceholders/node()[1]/@name]
+  $block+: $body//x-placeholder[@id=name(./ancestor::html[1]/head/bodyPlaceholders/node()[1])]
+
+
+  $supported: null
+
+  @if( $placeholder[./type/text()="twitter"] ) {
+    <iframe>: $block
+    @set_attr(src, $data/url): $@
+    $supported: ""
+  }
+  
+  @if( $placeholder[./type/text()="googlemaps"] ) {
+    <iframe>: $block
+    @set_attr(src, "https://www.google.com/maps?q=", $data/lat, ",", $data/long, "&output=embed&maptype=", $data/maptype, "&zoom=", $data/zoom): $@
+    
+    $supported: ""
+  }
+  
+  @if( $placeholder[./type/text()="facebook"] ) {
+    <div>: $block
+    $facebook: $@
+    @set_attr(data-href, $data/url): $facebook
+    @set_attr(class, "fb-post"): $facebook
+    $supported: ""
+  }
+  
+  @if( $placeholder[./type/text()="poll"] ) {
+    # It seems like it just doesn't work
+    # I can't really see it on the original page :|
+    $supported: ""
+  }
+  
+  @if( $placeholder[./type/text()="htmlAsset"] ) {
+    # same story as poll
+    $supported: ""
+  }
+
+  
+  @if( $placeholder[./type/text()="instagram"] ) {
+    <iframe>: $block
+    @set_attr(src, $data/url): $@
+    $supported: ""
+  }
+  
+  @if( $placeholder[./type/text()="youtube"] ) {
+    <iframe>: $block
+    @set_attr(src, $data/url): $@
+    $supported: ""
+  }
+  
+  @if( $placeholder[./type/text()="infogram"] ) {
+    <iframe>: $block
+    $frame
+    @match("infogram.com/(.*)", 1): $data/url
+    @set_attr(src, "https://e.infogr.am/", $data/url, "?src=embed"): $frame
+    $supported: ""
+  }
+  
+  @if( $placeholder[./type/text()="iframe"] ) {
+    <iframe>: $block
+    @set_attr(src, $data/url): $@
+    $supported: ""
+  }
+  
+  @if( $placeholder[./type/text()="htmlFragment"] ) {
+    @html_to_dom: $data/text
+    @append_to($block): $@/*
+    $supported: ""
+  }
+  
+  @if( $placeholder[./type/text()="scribd"] ) {
+    <iframe>: $block
+    $frame: $@
+    @match("scribd\\.com/document/(.*?)/", 1): $data/url
+    @set_attr(src, "https://www.scribd.com/embeds/", $data/url, "\\/content"): $frame
+    $supported: ""
+  }
+  
+  @if( $placeholder[./type/text()="omny"] ) {
+    <iframe>: $block
+    $frame: $@
+    @set_attr(src, $data/src, "\\/embed"): $frame
+    $supported: ""
+  }
+  
+  @if( $placeholder[./type/text()="relatedStory"] ) {
+    <related>: $block
+    $related: $@
+    #@append("Related article"): $related
+    #@wrap_inner(<h1>): $related
+    
+    @append(<a>): $related
+    $a: $@
+    
+    # This is hack because we have no access to api
+    # The website will redirect to correct id anyways
+    @set_attr(href, "https://www.smh.com.au/link/follow-20170101-", $data/id, "\\.html"): $a
+
+    $supported: ""
+  }
+  
+  @if( $placeholder[./type/text()="quote"] ) {
+    <blockquote>: $block
+    $blockquote
+    @html_to_dom: $data/quote
+    @append_to($blockquote): $@
+    @html_to_dom: $data/quoteByline
+    <cite>: $@
+    @append_to($blockquote): $data/cite
+    $supported: ""
+  }
+  
+  @if( $placeholder[./type/text()="video"] ) {
+    #<iframe>: $block
+    #$frame
+    # TODO REMOVE KEBAB!!!
+    # @set_attr(src, "https://www.youtube.com/watch?v=ocW3fBqPQkU"): $frame
+
+    #$supported: ""
+  }
+  
+  @if( $placeholder[./type/text()="linkArticle"] ) {
+    <a>: $block
+    $a
+    # This is hack because we have no access to api
+    # The website will redirect to correct id anyways
+    @set_attr(href, "https://www.smh.com.au/link/follow-20170101-", $data/id, "\\.html"): $a
+    
+    @html_to_dom: $data/text
+    @append_to($a): $@
+    $supported: ""
+  }
+  
+  @if( $placeholder[./type/text()="linkExternal"] ) {
+    <a>: $block
+    $a
+    @set_attr(href, $data/url): $a
+    @html_to_dom: $data/text
+    @append_to($a): $@
+    $supported: ""
+  }
+  
+  @if( $placeholder[./type/text()="image"] ) {
+    <figure>: $block
+    $block
+    @html_to_dom: $data/caption
+    <figcaption>: $@
+    @html_to_dom: $data/credit
+    <cite>: $@
+    @append_to($data/figcaption): $data/cite[not(contains(text(), "Supplied"))]
+
+    @append_to($block): $data/figcaption
+    @append_to($block)
+    
+    @append(<img>): $block
+    $img: $@
+    @set_attr(src, "https://static.ffx.io/images/", $data/id): $img
+    $supported: ""
+  }
+  
+  @if_not( $supported ) {
+    @unsupported: $block
+  }
+  @remove: $placeholder
+}
+
+# Gallery
+@if_not( $body ) {
+  @append(<div>): //head
+  body: $@
+}
+@map( $page/asset/images/* ) {
+  $block: $@
+  <figure>: $block
+  $block
+  @html_to_dom: $block/caption
+  <figcaption>: $@
+  @html_to_dom: $block/credit
+  <cite>: $@
+  @append_to($block/figcaption): $block/cite[text() != "Supplied"]
+
+  @append(<img>): $block
+  $img: $@
+  @set_attr(src, "https://static.ffx.io/images/", $block/id): $img
+  @append_to($body): $block
+  $supported: ""
+}
+
+@set_attr(href, "./ancestor::a/@href"): $body//a/descendant::img
+@remove: $body//iframe[contains(@src, "tip-jar")]
+
+#  ___  _                   
+# |__ \| |                  
+#    ) | |_ _ __ _   _  ___ 
+#   / /| __| '__| | | |/ _ \
+#  |_| | |_| |  | |_| |  __/
+#  (_)  \__|_|   \__,_|\___|
+
+?true
+#@replace("^\\s+$", ""): //text()
+
+# ULTIMATE PARSER 9000
+
+$problems: $body
+@while( $problems ) {
+  $test: $body//*[self::blockquote or self::aside or self::figure or (self::img and not(./ancestor::figure)) or self::iframe or self::slideshow or self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)]]
+ 
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br]
+ 
+  @if( $problems ) {
+    $parent: $problems/parent::*
+    @detach: $parent/node()
+    @set_attr("merge", $index): $@
+    <remove>: $parent
+    @after_el("./parent::*"): $problems
+    @combine: $body//self::*[prev-sibling::*/@merge = @merge]
+  }
+}

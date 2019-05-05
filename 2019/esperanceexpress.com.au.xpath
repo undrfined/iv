@@ -1,0 +1,109 @@
+~version: "2.1"
+
+site_name: "The Esperance Express"
+
+##s vlad 28
+
+article: //article[has-class("article") and @role="article"]
+header: $article//header[has-class("article__header")]
+body: $article//div[@data-io-article-url]//div[@itemprop="articleBody"]
+
+
+title: $header/h1[@itemprop="headline"]
+
+@datetime: $header//time[@itemprop="datePublished"]/@datetime
+published_date: $@
+
+@combine(", "): $header//li[contains(@itemprop, "author")]
+author: $header//li[contains(@itemprop, "author")]
+##cdo vlad
+author_photo_url: $author[count(.//h5[@rel="author"]) = 1 and count(.//img) = 1]//img/@src
+##
+
+<figure>: $body//div[contains(@class, "story-image") or has-class("lead-image")]
+<figcaption>: $@//p[has-class("story-image__caption")]
+@set_attr(src, @data-src): $body//img
+
+cover: $body//figure[has-class("lead-image")]
+
+@remove: $body//*[has-class("story-share--end")]
+
+@append(<iframe>): $body//div[has-class("story-generic__brightcove")]
+@set_attr(src, ".//..//div[@itemprop=\"embedUrl\"]"): $@
+
+@replace("google\\..*?/", "google.com/"): //iframe[contains(@src, "/maps/")]/@src
+
+<slideshow>: $body//div[has-class("carousel-overlay-container")]
+$slideshow: $@
+<figcaption>: $slideshow//div[has-class("carousel-wrapper-top")]
+$fc_l: $@
+@wrap_inner(<ddd>): $fc_l
+@append_to("./ancestor::slideshow"): $fc_l
+<b>: $@//h2
+@set_attr(fcl, ""): $fc_l
+<figure>: $slideshow//li
+<figcaption>: $@/p[has-class("flex-caption")]
+<figcaption>: $slideshow//div[has-class("carousel-gallery-meta")]
+$fc: $@
+@wrap(<h5>): $fc/div[has-class("carousel-gallery-meta__heading")]
+# @wrap_inner(<b>): $@
+@append_to("./ancestor::slideshow/figcaption[@fcl]"): $fc
+@remove: $slideshow//h2
+##r problem with captions gallery https://www.canberratimes.com.au/story/4803250/still-no-answers-one-year-after-death-in-cell/
+
+@remove: $body/div[has-class("assets") and not(*)]
+@remove: $body//div[has-class("plista_outstream_wrapper")]
+
+@remove: $body//*[has-class("advertisement")]
+<div>: $slideshow[count(./preceding-sibling::*[not(self::script)]) < 3 and count(./following-sibling::*[not(self::script)]) < 3]
+$dd: $@
+@remove: $dd//figcaption[not(ancestor::figure)]/ddd[next-sibling::*]
+@before_el("./ancestor::div[has-class(\"carousel-overlay-container\")]"): $dd//figcaption[not(ancestor::figure)]
+
+<figure>: $body//div[has-class("story-generic__youtube") or has-class("story-generic__brightcove")]
+<figcaption>: $@/next-sibling::div[has-class("story-generic__caption")]
+@append_to("./prev-sibling::figure"): $@
+
+@remove: $body//div[has-class("carousel-col")]
+@unsupported: $body//div[has-class("story-generic__polldaddy")]
+## todo find issue
+@unsupported: $body//div[has-class("story-generic__viostream")]
+## https://www.canberratimes.com.au/story/5887017/follow-along-with-the-plan-b-regional-bash-live-through-our-blog/
+<iframe>: $body//div[has-class("story-generic__lb24liveblog")]//div[@id="LB24_LIVE_CONTENT"]
+@set_attr(src, "https://v.24liveblog.com/iframe/?id=", @data-eid): $@
+
+<cite>: $body//blockquote//*[has-class("source")]
+
+# Twitter timeline https://www.esperanceexpress.com.au/story/4276089/hunter-bushfires-day-three-photos/
+@before(<iframe>, src, @href): $body//a[not(contains(@href, "twitter.com/hashtag")) and has-class("twitter-timeline")]
+@remove
+
+# twitter hashtag https://www.esperanceexpress.com.au/story/5897714/nine-life-lessons-we-can-take-unbelievably-from-mafs/?cs=13466
+
+@remove: $body//iframe[string-length(@src) = 0]
+
+## <snippet "imghref">
+# lowercase
+@replace("\\.png(?>\\?.*|)(?>#.*|)$", ".png", "i"): //a[.//img]/@href
+@replace("\\.jpg(?>\\?.*|)(?>#.*|)$", ".jpg", "i"): //a[.//img]/@href
+@replace("\\.jpeg(?>\\?.*|)(?>#.*|)$", ".jpeg", "i"): //a[.//img]/@href
+@replace("\\.gif(?>\\?.*|)(?>#.*|)$", ".gif", "i"): //a[.//img]/@href
+# image links
+@set_attr(href, "./ancestor::a/@href"): //a[(not(contains(@href, "wikipedia")) and not(contains(@href, "gettyimages"))) and not(ends-with(@href, ".png") or ends-with(@href, ".jpg") or ends-with(@href, ".jpeg") or ends-with(@href, ".gif"))]//img
+
+## <snippet end>
+## <snippet "s">
+@replace("\\s", " "): //text()
+## <snippet end>
+## <snippet "letmedie">
+?true
+
+$problems: $body
+@while( $problems ) {
+  $test: $body//*[self::*[has-class("fb-post")] or self::blockquote or self::aside or self::figure[not(./ancestor::slideshow)] or self::img[not(./ancestor::figure)] or self::iframe[not(./ancestor::figure)] or self::slideshow or self::video[not(./ancestor::figure)] or self::audio[not(./ancestor::figure)] or self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)]]
+
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote[not(has-class("instagram-media"))] or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br or ancestor::ul or ancestor::ol or ancestor::li]
+
+  @split_parent: $problems
+}
+## <snippet end>

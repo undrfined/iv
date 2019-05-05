@@ -1,0 +1,113 @@
+~version: "2.0"
+
+article: //article
+body: $article//div[has-class("td-post-content")]
+
+cover: $article//div[has-class("td-post-featured-image")]//img
+cover!: $article//div[has-class("td-post-featured-image")]//figure
+cover!: $article//div[has-class("td-post-featured-video")]//iframe
+header: $article//header
+
+title: $header/h1
+author: $header//div[has-class("td-post-author-name")]//a
+author_url: $author/@href
+
+@datetime(0, "en-US", "yy-MM-dd'T'HH:mm:ss+00:00"): $header//span[has-class("td-post-date")]/time/@datetime
+published_date: $@
+
+@set_attr(href, "./../self::a/@href"): $article//a/img[not(ends-with(../@href, ".jpg"))][not(ends-with(../@href, ".png"))][not(ends-with(../@href, ".jpeg"))][not(ends-with(../@href, ".gif"))]
+
+@remove: //img[string-length(@src) = 0]
+# Replace images quality
+
+
+@set_attr(src, "./parent::a/@href"): //img[not(@href)]
+@set_attr(edited, "true"): $$
+@replace("-\\d+x\\d+\\.", "."): //img[not(@edited)]/@src
+
+@unsupported: $body//input
+
+
+# Slideshow
+<slideshow>: $body//*[has-class("gallery")]
+<slideshow>: $body//*[has-class("wp-block-gallery")]
+<slideshow>: $body//div[has-class("td-gallery")]
+<figcaption>: $@//div[has-class("td-gallery-title")]
+
+@append_to("./prev-sibling::figure"): $body//figure/next-sibling::figcaption
+@remove: $body//*[has-class("td-controls")]
+
+# Review
+@append_to($body): $article//table[has-class("td-review")]
+$td_review: $@
+<strong>: $td_review//div[has-class("td-review-final-score")]
+@set_attr(align, "center"): $td_review//*[has-class("td-review-score") or has-class("td-review-stars")]
+<pic>: $td_review//i[has-class("td-icon-star")]
+@set_attr(src, "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA4AAAAOCAMAAAAolt3jAAAAhFBMVEUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD8qm6wAAAAK3RSTlMAAQIDBAgJCgwNDg8REhMVGiMlLzg5Q3SLjpKmq7S6xcfV19rg6Onr7e/7XaoN8AAAAGVJREFUCB1NwYkaQlAUhdG/VCRRadJEaWK///vlHj5Zi1Y4Y+iSMbCSFvydpSOdyXKvxjbygKxS73Mg/qr3DCB6q1P6NMKXzGOKucmcaNUyJcaXdM0ljXHWKjaQ3hXjJCnOaDeHH05tDmy7wjkmAAAAAElFTkSuQmCC")
+<pic>: $td_review//i[has-class("td-icon-star-half")]
+@set_attr(src, "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA4AAAAOCAQAAAC1QeVaAAAAqklEQVQYGQXBsUpCYQAG0CPaoKShFlwCJ0Ghwda791K+gyC0Ce0tbUFLW5MP4BA5iVMiEv8U0fB5DgDQ0wYAAODFEgAA4NavT1cAAMCzorYAAGgZeBBFw1atrwk8+hERUTAy96o4mjN0EhFRAEztXELfQUQUwJ2tDkDPt4gCKl/aAPAuooDKCgD4F/GnwoU9AHRExJsPTwZOmgCMxdoEzGzEDQDX7gFArQtn1tg4/2BUs6gAAAAASUVORK5CYII=")
+<pic>: $td_review//i[has-class("td-icon-star-empty")]
+@set_attr(src, "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA4AAAAOCAQAAAC1QeVaAAAArUlEQVQYGQXBoWoCAQAA0HdzyBT1cDdBbiCCs8jgqsPoL7ngNwgXrHbLsJkMYhmW1QteEDGsiMjFJfceANBQAQAA4EsKAAAQ28mFAADA0puRGQDAo2djWwSOhppKQOrmauXTC+iYWitcTIj8igEADJzUoOmsAwDeHVQBGs5CALHMEwBshABezQGAPwG62ijLAaDqR9vK2reFSOEBgJ67vT5IZO4iAFoSAAQ+1OEfoLshTHbTna0AAAAASUVORK5CYII=")
+
+@remove: //img[@width=1][@height=1]
+
+
+@wrap(<related>): $body//h3[has-class("zemanta-related-title")]
+@append_to("./prev-sibling::related"): $@/following-sibling::*
+
+# Inline related
+<related>: $body//div[has-class("related-posts")]
+# Related
+<related>: //div[has-class("td_block_related_posts")]
+$related
+<div>: $related/h4//a[1]
+@remove: $related/h4/a
+@remove: $related//a[has-class("td-post-category")]
+@remove: $related//a[@href="#"]
+@append_to($body): $related
+
+
+@remove: //iframe[contains(@src, "ads.cnn.com")]
+
+@after(<br>): //blockquote/p
+<pic>: $body//td//img
+
+@if( "//script[contains(text(), \"backstretch\")]" ) {
+  @clone: //meta[@property="og:image"]
+  <img>: $@
+  @set_attr(src, "./@content"): $@
+  cover: $$
+}
+
+<pic>: $body//img[has-class("wp-smiley")]
+@set_attr(height, 16): $@
+
+@after_el("./ancestor::ol"): $body//ol
+@remove: $body//ol[string-length(.//text()) < 2]
+
+#  ___  _                   
+# |__ \| |                  
+#    ) | |_ _ __ _   _  ___ 
+#   / /| __| '__| | | |/ _ \
+#  |_| | |_| |  | |_| |  __/
+#  (_)  \__|_|   \__,_|\___|
+
+?true
+@replace("^\\s+$", ""): //text()
+# ULTIMATE PARSER 9000
+
+$problems: $body
+@while( $problems ) {
+  $test: $body//*[self::blockquote or self::aside or self::figure or (self::img and not(./ancestor::figure)) or self::iframe or self::slideshow or self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)]]
+ 
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br or ancestor::ol or ancestor::li or ancestor::ul]
+ 
+  @if( $problems ) {
+    $parent: $problems/parent::*
+    @detach: $parent/node()
+    @set_attr("merge", $index): $@
+    <remove>: $parent
+    @after_el("./parent::*"): $problems
+    @combine: $body//self::*[prev-sibling::*/@merge = @merge]
+  }
+}

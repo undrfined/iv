@@ -1,0 +1,64 @@
+~version: "2.1"
+
+site_name: "sportskeeda"
+<notbody>: //div[@id="article-content"]
+body: $@
+title: $body/h1[@id="heading"]
+$meta: $body/div[has-class("post-profile")]
+author: $meta//div[has-class("name")]/a
+published_date: $meta//span[has-class("keeda-time-since")]/@data-iso-string
+
+@append_to("./prev-sibling::*//figure[not(.//figcaption)]"): $body//figure/ancestor::*[parent::notbody]/next-sibling::figcaption
+
+# cover: $meta/following-sibling::*[self::*[not(self::figure) and count(*) = 1 and figure and not(prev-sibling::p)] or self::figure[not(prev-sibling::p)]]
+# cover!: $cover[not(self::figure)]//figure
+@combine(<br>): $body//figure[count(figcaption) > 1]//figcaption/next-sibling::figcaption
+
+@remove: $meta
+<h5>: $body//h3
+
+@set_attr(src, @data-img): //img
+@remove: //noscript
+@remove: $body//div[has-class("ad-container")]
+@remove: $body//div[has-class("tags-text") or has-class("tags") or has-class("tags-wrapper")]
+@wrap(<related>): $body//a[has-class("next-up")]
+<h1>: $@//span[@id="next-slideshow"]
+@after_el("./ancestor::a")
+
+@prepend_to($body): //div[has-class("keeda-video-container")]//video
+@unsupported: $@
+
+<unsupported>: $body//script[contains(@src, "infogr")]
+@unsupported: $body//unsupported
+
+##do 2
+#@remove: $body/hr
+##
+
+## <snippet "imghref">
+# lowercase
+@replace("\\.png(?>\\?.*|)(?>#.*|)$", ".png", "i"): //a[.//img]/@href
+@replace("\\.jpg(?>\\?.*|)(?>#.*|)$", ".jpg", "i"): //a[.//img]/@href
+@replace("\\.jpeg(?>\\?.*|)(?>#.*|)$", ".jpeg", "i"): //a[.//img]/@href
+@replace("\\.gif(?>\\?.*|)(?>#.*|)$", ".gif", "i"): //a[.//img]/@href
+# image links
+@set_attr(href, "./ancestor::a/@href"): //a[(not(contains(@href, "wikipedia")) and not(contains(@href, "gettyimages"))) and not(ends-with(@href, ".png") or ends-with(@href, ".jpg") or ends-with(@href, ".jpeg") or ends-with(@href, ".gif"))]//img
+
+## <snippet end>
+##cdo 2
+## <snippet "s">
+@replace("\\s", " "): //text()
+## <snippet end>
+##
+## <snippet "letmedie">
+?true
+
+$problems: $body
+@while( $problems ) {
+  $test: $body//*[self::*[has-class("fb-post")] or self::blockquote or self::aside or self::figure[not(./ancestor::slideshow)] or self::img[not(./ancestor::figure)] or self::iframe[not(./ancestor::figure)] or self::slideshow or self::video[not(./ancestor::figure)] or self::audio[not(./ancestor::figure)] or self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)]]
+
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote[not(has-class("instagram-media"))] or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br or ancestor::ul or ancestor::ol or ancestor::li]
+
+  @split_parent: $problems
+}
+## <snippet end>

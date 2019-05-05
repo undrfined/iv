@@ -1,0 +1,111 @@
+~version: "2.1"
+
+##s sam 20
+##s girid 21
+
+site_name: "Ofeminin"
+article: //article[has-class("articleContent")]
+header: $article/div[has-class("articleTop")]
+body: $article/div[has-class("leftCol")]
+meta: $header/div[has-class("artIntro")]
+title: $meta/h1
+title: $body/h1
+author: $meta/div[has-class("dateAuthor")]/span[has-class("names")]
+published_date: //head/meta[@name="article:published_time" or @property="article:published_time"]/@content
+
+@wrap_inner(<b>): $body//p[has-class("lead")]
+
+# Cover
+<figure>: $article//div[has-class("teaser") or has-class("imgHolder")]
+<cite>: $@/span[has-class("copyrightsImg")]
+##cdo girid
+@wrap(<figcaption>)
+##?
+# <figcaption>
+##
+
+cover: $article//figure[has-class("teaser")]
+
+# Embeds
+@json_to_xml: $body//div[@data-run-module-lazy]/@data-params
+@html_to_dom: $@/parameters/embedCode
+@after_el("./ancestor::div[@data-run-module-lazy]"): $@
+
+$pulse: $body//div[has-class("pulsembed_embed")]
+
+<blockquote>: $pulse[@data-provider-name="Instagram"]
+@set_attr(class, "instagram-media")
+
+<div>: $pulse[@data-provider-name="postfacebook"]
+@set_attrs(data-href, "./a/@href", class, "fb-post")
+
+<div>: $pulse[@data-provider-name="videofacebook"]
+@set_attrs(data-href, "./a/@href", class, "fb-video")
+
+<blockquote>: $pulse[@data-provider-name="Twitter"]
+@set_attr(class, "twitter-tweet")
+
+<iframe>: $pulse[@data-provider-name="YouTube" or @data-provider-name="moneteasy" or @data-provider-name="pinterest" or @data-provider-name="Shoplovin" or @data-provider-name="vimeo" or @data-provider-name="Giphy" or @data-provider-name="OnettvVideo"]/a
+@set_attr(src, @href)
+
+@replace("vimeo.com/(\\d+)", "player.vimeo.com/video/$1"): $pulse[@data-provider-name="vimeo"]/iframe/@src
+##cdo
+@replace("giphy.com/gifs/", "giphy.com/embed/"): $pulse[@data-provider-name="Giphy"]/iframe/@src
+##
+
+@debug: $pulse
+
+<iframe>: $body//div[@data-run-module="embeddedapp/main.onettvplayer"]
+@set_attr(src, "https://onet.tv/embed-detail.html?mvp=", @data-params-mvp)
+
+# Gallery
+$item: $body//figure[has-class("galleryItem")]
+@remove: $item//*[has-class("galleryItemCounter")]
+##cdo
+@append_to("./ancestor::figure/figcaption"): $item/div[has-class("galleryItemDescription")]
+##?
+#@replace("Opublikowano ", ""): $meta/div[has-class("dateAuthor")]/span[has-class("dates")]
+#@replace("lata temu", "years ago 00:00"): $meta/div[has-class("dateAuthor")]/span[has-class("dates")]
+#@datetime: $@
+#published_date: $@
+##
+
+# unsupported
+<unsupported>: $body//div[@data-run-module="quizapp/main.renderquiz"]
+@unsupported: $body//unsupported
+
+# Remove bullshit
+@remove: $body//*[has-class("tags") or has-class("socialsBtns") or has-class("shareBtn")]
+@remove: $body/nav[has-class("breadcrumbs")]
+
+# Preview
+@html_to_dom: //head/meta[@name="twitter:description" or @property="twitter:description" or @name="og:description" or @property="og:description" or @name="description" or @property="description"]/@content[normalize-space()]
+description: $@
+description: $body//p[normalize-space()]
+
+## <snippet "imghref">
+# lowercase
+@replace("\\.png(?>\\?.*|)(?>#.*|)$", ".png", "i"): //a[.//img]/@href
+@replace("\\.jpg(?>\\?.*|)(?>#.*|)$", ".jpg", "i"): //a[.//img]/@href
+@replace("\\.jpeg(?>\\?.*|)(?>#.*|)$", ".jpeg", "i"): //a[.//img]/@href
+@replace("\\.gif(?>\\?.*|)(?>#.*|)$", ".gif", "i"): //a[.//img]/@href
+# image links
+@set_attr(href, "./ancestor::a/@href"): //a[(not(contains(@href, "wikipedia")) and not(contains(@href, "gettyimages"))) and not(ends-with(@href, ".png") or ends-with(@href, ".jpg") or ends-with(@href, ".jpeg") or ends-with(@href, ".gif"))]//img
+
+## <snippet end>
+@set_attr(src, @data-original): //img
+## <snippet "srcset">
+@set_attrs(src, @data-lazy, src, @data-src, srcset, @data-srcset, src, @data-lazy-src, srcset, @data-lazy-srcset): //img
+## <snippet end>
+## <snippet "letmedie">
+?true
+
+$problems: $body
+@while( $problems ) {
+  $test: $body//*[self::*[has-class("fb-post")] or self::blockquote or self::aside or self::figure[not(./ancestor::slideshow)] or self::img[not(./ancestor::figure)] or self::iframe[not(./ancestor::figure)] or self::slideshow or self::video[not(./ancestor::figure)] or self::audio[not(./ancestor::figure)] or self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)]]
+
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote[not(has-class("instagram-media"))] or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br or ancestor::ul or ancestor::ol or ancestor::li]
+
+  @split_parent: $problems
+}
+## <snippet end>

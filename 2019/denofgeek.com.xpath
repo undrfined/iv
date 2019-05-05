@@ -1,0 +1,97 @@
+~version: "2.1"
+
+site_name: "Den of Geek!"
+article: //div[contains(@class, "node-") and not(./ancestor::*[has-class("view")])]
+
+kicker: $article//div[has-class("dennis-kicker")]
+title: //h1[@id="page-title"]
+body: $article/div[has-class("content")]
+
+subtitle: $body//h2[has-class("short-teaser")]
+
+meta: $body//div[has-class("group_left_sidebar")]
+
+@datetime: $meta//span[has-class("date-display-single")]/@content
+published_date: $@
+$authors: $meta//span[has-class("field-name-field-author")]
+@combine(", "): $authors/span[has-class("field-item")]
+author: $authors
+
+@remove: $meta
+@remove: $body//div[@id="digiteka_wrapper"]
+@remove: $body//div[has-class("group_tags")]
+@remove: $body//img[@width < 2 and @height < 2]
+
+<pic>: $body//img[@border=0 and contains(@src, "amazon-adsystem.com")]
+
+# report rudimentary pictures not removed https://www.denofgeek.com/uk/movies/iron-man-3/64265/the-marvel-movies-debrief-iron-man-3-recap-legacy-and-mcu-connections
+
+# report missing 3/5 https://www.denofgeek.com/uk/movies/bohemian-rhapsody/61357/bohemian-rhapsody-review-fame-and-fortune-and-almost-everything-that-goes-with-it
+# 3.5 https://www.denofgeek.com/us/movies/zac-efron/279024/extremely-wicked-shockingly-evil-and-vile-review
+$fivestar: $body//div[has-class("fivestar-widget-static")]
+@wrap_inner(<h1>): $fivestar
+@prepend(" "): $fivestar//span[has-class("rating")]
+<pic>: $fivestar//div[has-class("star")]
+$pic: $@
+@replace("%", ""): $pic/span/@style
+@style_to_attrs(width, w): $pic/span
+
+# report missing link https://www.denofgeek.com/us/movies/avengers/245567/avengers-age-of-ultron-review
+@set_attr(href, "./ancestor::a/@href"): $body//a//img
+
+# report missing space "Avengersand the first hint" https://www.denofgeek.com/us/movies/marvel/280084/iron-man-3-recap-legacy-mcu-connections
+
+# report missing pagination https://www.denofgeek.com/games/playstation/29182/underrated-underappreciated-ps1-psone-playstation-games
+<details>: $body//section[has-class("pagination")]
+$pagination: $@
+<summary>: $@//h2
+@append_to("./.."): $@/strong
+@before(" | "): $@
+<ol>: $pagination//nav[has-class("mn_dropdown")]/ul
+@remove: $@//span[has-class("mn_page")]
+
+@set_attr(src, "http://i0.wp.com/cdn1us.denofgeek.com/sites/denofgeekus/modules/custom/dog_fivestar/widgets/dog/dog_star.png?crop=0px,49px,24px,24px"): $pic[.//span[has-class("on")]]
+@set_attr(src, "http://i0.wp.com/cdn1us.denofgeek.com/sites/denofgeekus/modules/custom/dog_fivestar/widgets/dog/dog_star.png?crop=0px,0px,24px,24px"): $pic[.//span[has-class("off")]]
+@set_attr(src, "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAAYdEVYdFNvZnR3YXJlAHBhaW50Lm5ldCA0LjEuMvojzfEAAAPHSURBVEhLvVVtSFtnFL6ZHzEamy6Zjflobm7q2iTVUhS2lTFkfjsVLYhUcRuDDYYMEcQq2B+TbXQ/oqDTOj9xjgnTMrtmucmqRVdsZXNksK4/XN0XdKWFWUbX1tYWnr7nvYltZqoMZQ88XO457/uce88573mF/wK/21GdnZ2dEHrdXvhd9mPBt1NRUFCAuLi415hp+wJ5n7Vazr5kw60FDcrLy6HVaq8zs1PxbgN8bumdi0d3YfXneJSVlUGv1z9gZlHxbhEQBJW8X8JfsharS/FoaWlBUVERYmNjTzP3DmXVFhBwS8+dr7Bg9XI87v8Sj/b2dhQXF1OAG8ytU1ZtAT63/cRvHz3NxYldXV2oq6uD0+m8y9xNyqoNcHrv3meoiAG3VX9q375ksvG0pKWlkG3qeRF3fkhYC9Df34++vj5UVFRAo9FQLfbk5eXpWPumsqeZpS+lsLDQlJOTYyQtYeoFEdQhJHQmy45TLtFLOZ8+JHLbpdaUNXHi8PAwZ2NjI69FZmbm95Sy0tJS3gAlJSX8Se+SJB0Q5sqsuDGVxL/y5vlE/PmpDlc+0fGW/OdbDe4tqiMCjI6OclKQzs5OtLa2oru7GwMDAxgcHOR/SPba2loYDIYlyvFb54qsWD6TFCH0JI6NjW1IqlFVVRVsNtsfLEEHeZp8TulNSs+SR4+bFzRRhcOcmJhYx/HxcYyMjKCtrY2nzeFwzDDZJC4ehrw/bY/ssnu+yd+NlR8fFfXv2URcHdux9j45ObmOPT09PPfp6elXs7KyXgxJRofPZT9+odKCa+OK6MpPal6PcACv1xvBoaEh1NTUwGKx/Mq2Zyoqm8DndrwxX2XGfXZyw8JhBgKBCNbX18NsNrPOFl5Vdm+CGVFMCBy0YzmgXSdOnJ6ejiB1UEZGBgX4XFHYBF8fcOyiM3A7+KgOj3N2djaCsizzCatWq5fZduVwbQTZ5cilAP9u25WLavz+8U4uODc3F8GGhgYYjUb6iyOKygZgnXSSDtvj4tdOJuPcK1Yc2228UllZid7eXvj9fszPz3PS6GAdRAE+U1SeAJo/9PXhNqUR/d3rJtDoqDcZ3mNLVLm5uYcYRykQnYGFhQUejMZFTEzMZbYmkYtFg+wUj9C1SOLXv0jGzMs2HDboLqkFwRFasgY22Gro+vR4PAgGg2hubobJZKK/oOs0OnwuqW3xAwMW3zfAz766OmUndcZTinc92AS1skAnmpqa0NHRgfz8fKhUqg+ZK/qer9xiKgVhfPfLdGnzjgiBBalmPM5oC5n+LwjCQyyBuZzmjb4dAAAAAElFTkSuQmCC"): $pic[.//span[has-class("on") and @w=50]]
+
+# report ads not removed https://www.denofgeek.com/us/movies/marvel/280086/chris-evans-favorite-captain-america-mcu-fight-scene
+@remove: $body//div[has-class("block-dfp")]
+
+# report should not generate https://www.denofgeek.com/us/259528/join-our-mailing-list
+@unsupported: $body//input
+
+cover: $body//div[has-class("primary-image")]//img
+
+<related>: $body//div[has-class("field-name-field-see-related")]
+$related: $@
+<h1>: $@/div[has-class("field-label")]
+@append_to($body): $related
+
+# report pizdec https://www.denofgeek.com/us/movies/avengers/245567/avengers-age-of-ultron-review
+@remove: $body//img[contains(@src, "screen_shot_2014-10-23_at_12.38.29_am.png")]
+
+#  ___  _                   
+# |__ \| |                  
+#    ) | |_ _ __ _   _  ___ 
+#   / /| __| '__| | | |/ _ \
+#  |_| | |_| |  | |_| |  __/
+#  (_)  \__|_|   \__,_|\___|
+
+?true
+@replace("\\s", " "): //text()
+
+# ULTIMATE PARSER 9000
+
+$problems: $body
+@while( $problems ) {
+  $test: $body//*[self::blockquote or self::aside or self::figure or (self::img and not(./ancestor::figure)) or self::iframe or self::slideshow or self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)]]
+ 
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br or ancestor::ul or ancestor::li]
+ 
+  @split_parent: $problems
+}
+
+# report missing spaces "Youaffirm that you" https://www.denofgeek.com/us/content/terms-of-use
+?path: .*terms-of-use.*
+
+body!!: null

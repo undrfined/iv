@@ -1,0 +1,138 @@
+~version: "2.0"
+
+site_name: "Radio LFM"
+article: //article
+header: $article//header
+
+body: $article//div[@id="mvp-content-wrap"]//div[@id="mvp-content-body"]//div[@id="mvp-content-main"]
+
+@remove: $article//*[@id="mvp-post-add-wrap"]
+
+title: $header//h1[@itemprop="headline"]
+subtitle: $header//*[has-class("mvp-post-excerpt")]
+
+<figure>: $article//div[@id="mvp-post-feat-img"]
+cover: $@
+<figcaption>: $article//span[has-class("mvp-feat-caption")]
+@append_to($cover): $@
+
+author: $header//div[@itemprop="author"]//span[@itemprop="name"]/a
+# comment diffonly {
+author_url: $author/@href
+# }
+
+@before(<hr>): $body//div[has-class("pluginconcours")]
+@after(<hr>): $body//div[has-class("pluginconcours")]
+
+$playlist: $body//div[has-class("wp-video-playlist")]
+@remove: $playlist/video
+@json_to_xml: $playlist/script[has-class("wp-playlist-script")]
+$json: $@
+@map( $json/tracks/* ) {
+  $track: $@
+  #@debug: $@//ancestor::div[has-class("wp-video-playlist")]
+  <figure>: $track
+  $track: $@
+  @append(<video>, src, "./src"): $track
+  <figcaption>: $track//title
+  @wrap_inner(<b>): $@
+  @after(<br>): $@
+  @append_to("./../figcaption"): $track//caption
+  @append_to("./ancestor::div[has-class(\"wp-video-playlist\")]"): $track
+}
+@remove: $json
+
+#<related>: $body//blockquote[has-class("wp-embedded-content")]
+#@remove: $body//iframe[has-class("wp-embedded-content")]
+
+# comment diffonly {
+@replace("publié le (.*?) à (.*)", "$1 $2", "i"): $article//*[@id="mvp-vid-wide-wrap"]//*[has-class("mvp-post-date")]
+published_date: $@
+# }
+@datetime: $header//span[has-class("mvp-post-date")]/time/@datetime
+published_date: $@
+
+#@append_to($body): $article//*[has-class("button-login-light")][ends-with(@href, "mp4") or ends-with(@href, "mp3") or ends-with(@href, "m4a")]
+
+<figure>: $body//div[has-class("wp-caption")]
+<figcaption>: $@//*[has-class("wp-caption-text")]
+
+@set_attr(src, @data-lazy-src): //img
+
+<figure>: $body//div[@data-type="audio"]
+$audio: $@
+<figcaption>: $audio//span[has-class("the-name")]
+<cite>: $audio//span[has-class("the-artist")]
+@append_to("./../figcaption"): $@
+@append(<audio>, src, @data-source): $audio
+
+@prepend_to($body): //div[@id="mvp-video-embed-cont"]
+<video>: $body//iframe[has-class("ag_iframe_vod")][contains(@src, ".mp4")]
+@match("url=(.*?\\.mp4)", 1): $@/@src
+<audio>: $body//iframe[contains(@src, ".mp3") or contains(@src, ".m4a")]
+@match("url=(.*?\\.(mp3|m4a))", 1): $@/@src
+
+<slideshow>: $body//div[has-class("gallery")]
+$slideshow: $@
+<figure>: $slideshow//*[has-class("gallery-item")]
+<figcaption>: $slideshow//*[has-class("gallery-caption")]
+@replace("-\\d+x\\d+\\.(.+)", ".$1"): $slideshow//img[@width<300]/@src
+
+<audio>: $body//video[./source[ends-with(@src, ".mp3") or ends-with(@src, ".m4a") or ends-with(@src, ".MP3") or ends-with(@src, ".M4A")]]
+#@before(<img>, src, @poster): $@[@poster]
+
+@remove: $body//img[@width < 3 or @height < 3]
+<related>: $article//div[@id="mvp-related-posts"]
+@append_to($body): $@
+
+@remove: $body//noscript
+
+@unsupported: $body//form
+
+# diffonly {
+#@replace("-\\d+x\\d+\\.", "."): //img/@src
+# }
+
+#  ___  _                   
+# |__ \| |                  
+#    ) | |_ _ __ _   _  ___ 
+#   / /| __| '__| | | |/ _ \
+#  |_| | |_| |  | |_| |  __/
+#  (_)  \__|_|   \__,_|\___|
+
+?true
+
+# ULTIMATE PARSER 9000
+@replace("\\s", " "): //text()
+
+@replace("-\\d+x\\d+\\.", "."): $body//img[not(./parent::figure/@id="mvp-post-feat-img")]/@src
+
+@replace("(http.+?)(?=\\d+w)(\\d+)w(?:,|$)", "<link src=$1 res=$2>"): //img/@srcset
+@append(@srcset): //img[@srcset]
+@html_to_dom: $@
+@set_attr(src, .//link[not(../link/@res>@res)]/@src): //img[@srcset]
+
+@replace("-\\d+x\\d+\\.", "."): $body//slideshow//img/@src
+
+$problems: $body
+@while( $problems ) {
+  $test: $body//*[self::blockquote or self::aside or self::figure or (self::img and not(./ancestor::figure)) or self::iframe or self::slideshow or self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)] or self::h1 or self::h2 or self::h3 or self::h4 or self::h5 or self::video]
+ 
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br]
+ 
+  @if( $problems ) {
+    $parent: $problems/parent::*
+    @detach: $parent/node()
+    @set_attr("merge", $index): $@
+    <remove>: $parent
+    @after_el("./parent::*"): $problems
+    @combine: $body//self::*[prev-sibling::*/@merge = @merge]
+  }
+}
+
+?exists: //div[has-class("contentHoroscope")]
+?path: /*evenement.*
+?path: /*partenaires.*
+?path: /*derniers-titres.*
+
+body!!: null

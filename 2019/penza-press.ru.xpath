@@ -1,0 +1,211 @@
+~version: "2.1"
+
+##s nikita 32
+##s kk 34
+
+##r kk <style> http://penza-press.ru/lenta-novostey/105940/v-noyabre-produkty-v-magazinah-penzy-podorozhali-na-26-rub.-tablica
+
+##r kk fails to extract ads http://penza-press.ru/lenta-novostey/61091/glava-selskoj-administracii-poluchala-zp-za-nerabotayucshuyu-doch
+
+##r nikita nested http://www.penza-press.ru/lenta-novostey/121613/pochemu-resurs-zvonova-zacshicshaet-penzaplat
+
+
+##r should be in <p>s http://www.penza-press.ru/afisha/kritika/1718/kak-muzyka-seriala-tvin-piks-povliyala-na-pop-kulturu?mobile=no
+##r nikita missing formatting "Герпетическая инфекция" http://penza-press.ru/lenta-novostey/122540/kak-zacshititsya-ot-gerpesa?mobile=no
+##r nikita page can be generated http://www.penza-press.ru/pochemu-arendovat-odnokomnatnuyu-kvartiru-v-kieve-na-sutki-vygodno.dhtm?mobile=no
+##r kk should not be gallery http://www.penza-press.ru/fotoarchive/142072/vesennyaya-uborka-penzy
+##cdo kk
+channel: "@penzapress"
+##
+
+##do kk
+#site_name: "ПЕНЗА-ПРЕСС"
+##?
+site_name: "Пенза-пресс"
+##
+
+?exists: //div[has-class("newspage")]
+body: //div[has-class("newspage")]
+
+cover: $body//img[@id="article_photo"]
+header: $body//div[has-class("news_header")]
+@prepend_to($body): $header//div[has-class("video")]
+
+title: $header//h1
+
+time: $header//div[has-class("time")]
+@remove: $time/*
+
+@match("\\d+ .*? (\\d{4}),", 1): //div[has-class("header-line__date")]
+$year: $@
+
+@append(<time>): //head
+tt: $@
+@datetime(0, "ru", "dd MMMM y"): $time
+@append_to("//head/time[string-length(.) = 0]"): $@
+
+@append(" "): $time
+@append_to($time): $year/text()
+
+@datetime(0, "ru", "dd MMMM в HH:mm y"): $time
+@append_to("//head/time[string-length(.) = 0]"): $@
+
+published_date: $tt
+
+@prepend_to($body): $header//div[has-class("author")]
+<p>: $@
+@wrap_inner(<b>): $@
+@remove: $$//img
+@set_attr(height, 100): $@
+
+<p>: $body//h6
+
+@unsupported: $body//div[@id="mc-poll"]
+# <div>: $body//script[contains(., "pollId") and contains(., "cackle.me")]
+# @unsupported: $@
+
+##r wrong link footer http://penza-press.ru/lenta-novostey/141880/kak-v-penze-za-mesyac-izmenilis-ceny-na-produkty-monitoring
+@append_to($body//div[@id="text"]): $body//div[has-class("img")]
+<footer>: $@
+# @replace("(https?://.+?)(?> |$)", "<a href=\"$1\">$1</a>"): $@
+# @html_to_dom: $@
+
+##do kk
+# <slideshow>: $body//div[@id="slides"]
+##?
+<slideshow>: $body//div[@id="slides" and count(//div[@id="text"]/*) > 2]
+##
+<img>: $body//*[@id="slides"]//div[has-class("photorep_item") and @img]
+@set_attr(src, @img): $@
+@remove: $body//div[has-class("slide")]
+
+# $k: $body//span[contains(., "Реклама")]
+# @remove: $k/following-sibling::*
+# @remove: $k
+
+@wrap_inner(<i>): $body//div[has-class("description") and not(.//p)]
+@wrap_inner(<i>): $body//div[has-class("description")]//p
+
+@prepend_to($body): $body//*[has-class("description") and has-class("photorep")]
+@prepend_to($body//div[@id="text"]): $body//*[has-class("description")]
+@after(<br>): $body//*[has-class("description")]
+
+# @remove: $body//div[@id="text"]/following-sibling::*
+@remove: $body//div[has-class("smi24__informer")]/following-sibling::*
+@remove: $body//div[has-class("cackle")]
+@remove: $header
+
+@unsupported: $body//div[has-class("playbuzz")]
+
+<img>: $body//div[@img and has-class("gallery")]
+@set_attr(src, @img): $@
+
+
+<slideshow>: $body//div[./div/img[has-class("gallery")]]
+<figure>: $@/div
+$figure: $@
+<figcaption>: $figure/*[not(self::img)]
+
+<slideshow>: $body//div[has-class("afisha_gallery")]
+$slideshow: $@
+@remove: $slideshow//div[has-class("left") or has-class("right")]
+<div>: $slideshow//table
+
+?exists: //div[@id="content"]
+!not_exists: //div[@id="content"]//div[has-class("newsfeed_newsblock")]
+
+body: //div[@id="content"]
+@remove: $body//div[has-class("newonsite")]
+title: $body/h1
+@datetime: $body//div[has-class("time")]
+published_date: $@
+@remove: $body//div[has-class("time")]
+<footer>: $body//div[has-class("more")]
+$footer: $@
+@remove: $footer/p[.//a[@href="/partners"]]
+@wrap_inner(<b>): $footer
+
+<div>: $body//script[contains(@src, "api-maps.yandex.ru/services/constructor")]
+@unsupported: $@
+
+# <VK>
+@before(<vk>): /html/body
+@replace(".*(?<=VK\\.Widgets\\.Post\\()['\"](.*?)['\"]\\s*?,\\s*([\\d-]+)\\s*?,\\s*([\\d-]+)\\s*?,\\s*['\"](.*?)['\"].*(?=\\)).*", "<iframe did=\"$1\" src=\"https://vk.com/widget_post.php?owner_id=$2&post_id=$3&hash=$4\"></iframe>"): //body//script[contains(., "VK.Widgets.Post")]
+@html_to_dom: $@
+$doms: $@
+@append_to(/html/vk): $doms/iframe[@did=./ancestor::html/body//div/@id]
+@append_to("./ancestor::html/body//div[@id=(/html/vk/iframe/@did)[1]]"): $@
+@remove: $doms
+# </VK>
+
+@wrap(<span>): $body//div[@id="text"]//text()
+<p>: $body//div[@id="text"]//br[./next-sibling::br]
+
+##cdo nikita kk
+ @split_parent: $body//div[@id="text"]//p//p
+##
+
+##do kk
+#image_url: $cover/@src
+##
+
+@replace("\\.jpg$", ".jpg", "i"): $body//a/@href
+@replace("\\.png$", ".png", "i"): $body//a/@href
+@replace("\\.jpeg$", ".jpeg", "i"): $body//a/@href
+@replace("\\.gif$", ".gif", "i"): $body//a/@href
+
+@set_attr(href, "./ancestor::a/@href"): $body//a[not(contains(@href, "slide_") or ends-with(@href, ".jpg") or ends-with(@href, ".png") or ends-with(@href, ".jpeg") or ends-with(@href, ".gif"))]//img
+
+@remove: $body//div[has-class("no-phone") and .//script[contains(., "AdvManager")]]/following-sibling::*
+@remove: $body//div[has-class("onlinebriefing")]
+
+## <snippet "vk">
+@before(<vk>): /html/body
+@replace(".*(?<=VK\\.Widgets\\.Post\\()['\"](.*?)['\"]\\s*?,\\s*([\\d-]+)\\s*?,\\s*([\\d-]+)\\s*?,\\s*['\"](.*?)['\"].*(?=\\)).*", "<iframe did=\"$1\" src=\"https://vk.com/widget_post.php?owner_id=$2&post_id=$3&hash=$4\"></iframe>"): //body//script[contains(., "VK.Widgets.Post")]
+@html_to_dom: $@
+$doms: $@
+@append_to(/html/vk): $doms/iframe[@did=./ancestor::html/body//div/@id]
+@append_to("./ancestor::html/body//div[@id=(/html/vk/iframe/@did)[1]]"): $@
+@remove: $doms
+
+## <snippet end>
+
+#  ___  _                   
+# |__ \| |                  
+#    ) | |_ _ __ _   _  ___ 
+#   / /| __| '__| | | |/ _ \
+#  |_| | |_| |  | |_| |  __/
+#  (_)  \__|_|   \__,_|\___|
+
+?true
+
+$meta: //head/meta
+image_url: $meta[(@property="twitter:image" or @name="twitter:image") and not(ends-with(@content, "penza-press.ru"))]/@content[normalize-space()]
+image_url: $meta[(@property="og:image" or @name="og:image") and not(ends-with(@content, "penza-press.ru")) ]/@content[normalize-space()]
+image_url: $body//img/@src
+
+##cdo nikita kk
+@replace("\\s", " "): //text()
+##
+
+# ULTIMATE PARSER 9000
+
+$problems: $body
+@while( $problems ) {
+  $test: $body//*[self::*[has-class("fb-post")] or self::blockquote or self::aside or self::figure or self::img[not(./ancestor::figure)] or self::iframe[not(./ancestor::figure)] or self::slideshow[not(./ancestor::figure)] or self::video[not(./ancestor::figure)] or self::audio[not(./ancestor::figure)] or self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)]]
+ 
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br or ancestor::ul or ancestor::ol or ancestor::li]
+ 
+  @split_parent: $problems
+}
+?path: /*about.*
+?path: /*ads.*
+?path: /*contacts.*
+?path: /(/*|\?.*|$)
+?path: /*archive.*
+?path: /*partners.*
+?path: /*ask.*
+?path: /*mail/*subscribe.*
+?path: /*echoonline.*
+
+body!!: null

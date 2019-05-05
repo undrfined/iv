@@ -1,0 +1,400 @@
+~version: "2.1"
+
+site_name: "Brisbane Times"
+site_url: "brisbanetimes.com.au"
+
+?true
+@match("^window.INITIAL_STATE = ({.*})$", 1): //script[starts-with(text(), "window.INITIAL_STATE = ")]
+@json_to_xml: $@
+json: $@
+
+
+page: $json/page/item[1]/asset
+@html_to_dom: $page/asset/body
+body: $$
+
+@if( $page/assetType[text()="bespoke"] ) {
+  # body!!: null
+}
+
+@map( $page//resources/* ) {
+  $resource: $@
+  $data: $resource/data
+  $type: $resource/type
+  $supported: null
+  
+  @if( $type[text()="leadImage"] ) {
+    <figure>: $data/node()[1]/data
+    $data
+    @html_to_dom: $data/caption
+    <figcaption>: $@
+    @html_to_dom: $data/credit
+    <cite>: $@
+    @append_to($data/figcaption): $data/cite
+    ##cdo
+    @replace("^supplied.*", "", "i"): $@
+    ##?
+#    @replace("^\\s*Supplied.*", ""): $@
+    ##
+    
+    @append_to($data): $data/figcaption
+    @append_to($data)
+    
+    @append(<img>): $data
+    $img: $@
+    @set_attr(src, "https://static.ffx.io/images/", $data/id): $img
+    @prepend_to($body): $data
+    cover: $data
+    $supported: ""
+  }
+  
+  
+  @if( $type[text()="scoreboard"] ) {
+    
+    $supported: ""
+  }
+  
+  @if( $type[text()="talkingPoints"] ) {
+    @html_to_dom: $data/title
+    ##do
+#  <h1>: $@
+    ##?
+     <h5>: $@
+    ##
+    @if_not( $@ ) {
+      ##do
+#     @prepend(<h1>): $data
+      ##?
+      @prepend(<h5>): $data
+      ##
+      $magic_title: $@
+      @if( $data/type[text()="facts"] ) {
+        @prepend("In numbers"): $magic_title
+      }
+      @if( $data/type[text()="list"] ) {
+        @prepend("Talking points"): $magic_title
+      }
+      @if( $data/type[text()="text"] ) {
+        @prepend("Why it matters"): $magic_title
+      }
+    }
+    @remove: $data/type
+    <ul>: $data/items
+    $ul: $@
+    @html_to_dom: $ul//text
+    <p>: $@/aside
+    <li>: $ul/*
+    @html_to_dom: $@/quantity
+    ##do
+#   <b>: $@
+    ##?
+    <h5>: $@
+    ##
+    ##do
+#    @after(" - "): $@
+    ##?
+    @append(<br>): $@
+    ##
+    <div>: $data
+    $div: $@
+    @html_to_dom: $div/text
+    @prepend_to($body): $div
+    @after(<hr>): $@
+    $supported: ""
+  }
+  
+  @if_not( $supported ) {
+    @append_to($body): $resource
+    @unsupported: $resource
+  }
+}
+
+@if( $page/assetType[text()="featureArticle"] ) {
+  @if( //header/div[has-class("_35hE3")]//img ) {
+    <figure>: $page/featuredImages/*[1]/data
+    cover: $@
+    <figcaption>: $cover/caption
+    <cite>: $cover/credit
+    @append_to("./parent::*/figcaption"): $@
+    <img>: $cover/id
+    @set_attr(src, "https://static.ffx.io/images/", "./text()"): $@
+  }
+}
+
+@html_to_dom: $page/asset/headlines/headline
+@wrap(<a>): $@
+##do
+#title: $page/social/title
+##?
+title: $@
+##
+
+@html_to_dom: $page/asset/intro
+@wrap(<a>): $@
+subtitle: $@
+@replace("(?=Follow us).*", "", "i"): $subtitle
+
+published_date: (//time[has-class("_2_zR-")])[last()]/@datetime
+
+#@datetime: $page/dates/modified
+#published_date
+
+@before_el("./ancestor::item"): $page//authors/*/name
+$lol: $@
+@combine(", "): $@/next-sibling::name
+author: $lol
+author!: $page/asset/byline
+
+@htmldecode: $page/asset/bodyPlaceholders//*//text()
+
+@append_to(//head): $page/asset/bodyPlaceholders
+$body_placeholders
+
+@clone: $body_placeholders
+<lol>: $@
+$lol: $@
+
+@append_to("./ancestor::html/body//x-placeholder[not(./*) and (@id=./ancestor::html/head/bodyPlaceholders/node()[1]/@name or @id=name(./ancestor::html/head/bodyPlaceholders/node()[1]))]"): $body_placeholders/*
+<block>
+
+$z: $body//x-placeholder[./* and @id=./ancestor::body//x-placeholder[not(./*)]/@id]
+@map( $z ) {
+  $current: $@
+  @set_attr(current, "y"): $current
+  @clone: $current/node()
+  @append_to("./ancestor::body//x-placeholder[not(./*) and @id=./ancestor::body//x-placeholder[@current]/@id]"): $@
+  @set_attr(current, "n"): $current
+}
+
+$z: $body//x-placeholder[not(./*)]
+@map( $z ) {
+  $current: $@
+  @set_attr(current, "y"): $current
+  @append_to($current): $lol/*[name(.)=./ancestor::html//body//x-placeholder[@current="y"]/@id or @name=./ancestor::html//body//x-placeholder[@current="y"]/@id]
+  <block>: $@
+  @set_attr(current, "n"): $current
+}
+
+@append(<display>): $body//block
+
+
+$a: $body//block[type="twitter" or type="iframe" or type="youtube" or type="instagram"]
+  @append(<iframe>, src, "./ancestor::block/data/url"): $a/display
+  @remove: $@[contains(@src, "interactive/shared/weather")]
+<supported>: $a
+
+
+$a: $body//block[type="callout"]
+  @append(<div>): $a/display
+  $display: $@
+  @append(<h5>): $display
+  @html_to_dom: $a/data/title
+  @append_to("./ancestor::block/display/div/h5"): $@
+  
+  @html_to_dom: $a/data/listRows
+  @append_to("./ancestor::block/display/div"): $@
+  
+  @after(<hr>): $display
+  @before(<hr>): $display
+<supported>: $a
+
+
+$a: $body//block[type="omny"]
+  @append(<iframe>): $a/display
+  ##do
+#  @set_attr(src, "./ancestor::block/data/src", ""): $@
+  ##?
+  @set_attr(src, "./ancestor::block/data/src", "\\/embed"): $@
+  ##
+<supported>: $a
+
+
+$a: $body//block[type="scribd"]
+  @append(<iframe>): $a/display
+  $display: $@
+  ##do
+#  @set_attr(src, "./ancestor::block/data/url"): $display
+  ##?
+  @match("scribd\\.com/document/(.*?)/", 1): $a/data/url
+  @set_attr(src, "https://www.scribd.com/embeds/", "./ancestor::block/data/url", "\\/content"): $display
+  ##
+<supported>: $a
+
+
+$a: $body//block[type="infogram"]
+  @append(<iframe>): $a/display
+  $display: $@
+  @match("infogram.com/(.*)", 1): $a/data/url
+  ##do
+#  @set_attr(src, "https://infogram.com/", "./ancestor::block/data/url", ""): $display
+  ##?
+  @set_attr(src, "https://e.infogr.am/", "./ancestor::block/data/url", "?src=embed"): $display
+  ##
+<supported>: $a
+
+
+$a: $body//block[type="facebook"]
+  @remove: $a[string-length(data/url) = 0]
+  ##do
+#  @append(<iframe>, src, "./ancestor::block/data/url"): $a/display
+  ##?
+  @append(<div>, class, "fb-post", data-href, "./ancestor::block/data/url"): $a/display
+  ##
+<supported>: $a
+
+$a: $body//block[type="quote"]
+  @append(<blockquote>): $a/display
+  $display: $@
+  @html_to_dom: $a/data/quote
+  @append_to("./ancestor::block/display/blockquote"): $@
+  @html_to_dom: $a/data/quoteByline
+  <cite>: $@
+  @append_to("./ancestor::block/display/blockquote"): $@
+<supported>: $a
+
+$a: $body//block[type="googlemaps"]
+  @append(<iframe>): $a/display
+  @set_attr(src, "https://www.google.com/maps?q=", "./ancestor::block/data/lat", ",", "./ancestor::block/data/long", "&output=embed&maptype=", "./ancestor::block/data/maptype", "&zoom=", "./ancestor::block/data/zoom"): $@
+<supported>: $a
+
+
+$a: $body//block[type="relatedStory"]
+  @append(<a>): $a/display
+  $display: $@
+  @set_attr(href, "https://www.", $site_url, "\\/link/follow-20170101-", "./ancestor::block/data/id", "\\.html"): $display
+  @wrap(<related>): $display
+<supported>: $a
+
+
+$a: $body//block[type="linkArticle"]
+  @append(<a>): $a/display
+  $display: $@
+  @set_attr(href, "https://www.", $site_url, "\\/link/follow-20170101-", "./ancestor::block/data/id", "\\.html"): $display
+  @html_to_dom: $a/data/text
+  @append_to("./ancestor::block/display/a"): $@
+<supported>: $a
+
+
+$a: $body//block[type="linkExternal"]
+  @append(<a>): $a/display
+  $display: $@
+  ##do
+#  @replace("&", "&amp;"): $a/data/url
+  ##
+  @set_attr(href, "./ancestor::block/data/url"): $display
+  @html_to_dom: $a/data/text
+  @append_to("./ancestor::block/display/a"): $@
+<supported>: $a
+
+
+# TODO check animations
+$a: $body//block[type="image"]
+  @append(<figure>): $a/display
+  $display: $@
+  @append(<figcaption>): $display
+  @html_to_dom: $a/data/caption
+  @append_to("./ancestor::block/display/figure/figcaption"): $@
+  @html_to_dom: $a/data/credit
+  <cite>: $@
+  @append_to("./ancestor::block/display/figure/figcaption"): $@
+  ##cdo
+  @replace("^supplied.*", "", "i"): $@
+  ##?
+#  @replace("^\\s*Supplied.*", ""): $@
+  ##
+  @append(<img>): $display
+  @set_attr(src, "https://static.ffx.io/images/", "./ancestor::block/data/id"): $@
+<supported>: $a
+
+<supported>: $body//block[type="htmlFragment" or type="htmlAsset" or type="poll"]
+
+@remove: $body//supported/*[not(self::display)]
+@unsupported: $body//block
+
+
+# Gallery
+@if_not( $body ) {
+  @append(<div>): //head
+  body: $@
+}
+@map( $page/asset/images/* ) {
+  $block: $@
+  <figure>: $block
+  $block
+  @html_to_dom: $block/caption
+  <figcaption>: $@
+  @html_to_dom: $block/credit
+  <cite>: $@
+  @append_to($block/figcaption): $block/cite
+  @replace("^\\s*supplied.*", "", "i"): $@
+
+  @append(<img>): $block
+  $img: $@
+  @set_attr(src, "https://static.ffx.io/images/", $block/id): $img
+  @append_to($body): $block
+  $supported: ""
+}
+
+##do
+#<h5>: $body//p[.//strong and not(./next-sibling::*) and not(./prev-sibling::*)]
+##
+@set_attr(href, "./ancestor::a/@href"): $body//a/descendant::img
+@remove: $body//iframe[contains(@src, "tip-jar")]
+
+$head: /html/head
+$meta: $head/meta
+description: $meta[@name="twitter:description"]/@content[normalize-space()]
+description: $meta[@name="og:description"]/@content[normalize-space()]
+description: $body/p[normalize-space()]
+description: $meta[@name="description"]/@content[normalize-space()]
+description: $subtitle
+
+### RESTORE ORIGINAL IMAGES
+$article: //article
+$mix_images: $article//img
+$mix_images+: $body//img
+@set_attr(uid, @src): $mix_images
+@set_attr(uid, @srcset): $mix_images
+
+@match("/([^/]+)(?>,\\s.*|)/?$", 1): $mix_images/@uid
+
+@map($article//img[@uid]){
+  $original: $@
+  $current: $body//img[not(@original)]
+  
+  @set_attr(ouid, $original/@uid): $current
+
+  $source_srcset: $original/ancestor::picture/source[1]/@srcset
+  
+  @set_attrs(src, $original/@src, srcset, $source_srcset, original, "Y"): $current[@uid = @ouid]
+  @set_attr(srcset, $original/@srcset): $current[not(@srcset) or @srcset=""][@uid = @ouid]
+}
+
+
+
+?exists: //section[has-class("article-section")]
+
+body!: //section[has-class("article-section")]
+#  ___  _                   
+# |__ \| |                  
+#    ) | |_ _ __ _   _  ___ 
+#   / /| __| '__| | | |/ _ \
+#  |_| | |_| |  | |_| |  __/
+#  (_)  \__|_|   \__,_|\___|
+
+?true
+@replace("\\s", " "): //text()
+
+# ULTIMATE PARSER 9000
+
+$problems: $body
+@while( $problems ) {
+  $test: $body//*[self::*[has-class("fb-post")] or self::blockquote or self::aside or self::figure or self::img[not(./ancestor::figure)] or self::iframe[not(./ancestor::figure)] or self::slideshow[not(./ancestor::figure)] or self::video[not(./ancestor::figure)] or self::audio[not(./ancestor::figure)] or self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)]]
+ 
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br or ancestor::ul or ancestor::ol or ancestor::li]
+ 
+  @split_parent: $problems
+}
+
+@remove: $body//li[not(.//text())]
+

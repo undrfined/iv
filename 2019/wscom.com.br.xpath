@@ -1,0 +1,98 @@
+~version: "2.1"
+
+site_name: "WSCOM"
+article: //article[has-class("article_pd_int")]
+
+body: $article
+
+<comment>: $article/div[has-class("col-md-12")]/p[has-class("date")]
+date_head: $@
+header: $article/div[has-class("col-md-12")][./h1]
+
+@inline: $date_head/comment()
+@after_el("./parent::*"): $@
+@combine: $date_head/next-sibling::comment
+
+@replace("\\s+às\\s+", " "): $@
+@replace("/", "."): $@
+
+# diffonly -3
+@datetime: $date_head
+published_date: $@
+
+@remove: $article/div[has-class("col-md-12")][.//comment[has-class("date")]]
+
+title: $header/h1
+subtitle: $header/h5
+
+author!!: ""
+
+@replace("\\s", " "): //text()
+
+<span>: $article//blockquote//h2
+
+# content-media__container
+<figure>: $article//div[has-class("content-media__container")]
+$media_container: $@
+<figcaption>: $media_container//*[has-class("content-media__description")]
+<figcaption>: $media_container//following-sibling::div[has-class("content-media__description-centered")]
+@append_to("./preceding-sibling::figure"): $@
+
+@remove: $body//iframe[contains(@id, "google_ads")]
+
+# foto https://www.wscom.com.br/noticia/anitta-posa-de-camisola-e-afirma-estar-se-sentindo-linda/
+<figure>: $article//div[has-class("foto")]
+<figcaption>: $@//label[has-class("foto-legenda")]
+
+@set_attr(src, ./a/@href): $body//video[has-class("wp-video-shortcode")]
+
+cover: $article//img[has-class("wp-post-image")]
+
+<figure>: $article//div[has-class("pull-right")][./img]
+$figure: $@
+<cite>: $figure//p[has-class("creditoImagem")]
+@wrap(<figcaption>): $@[not(./ancestor::figcaption)]
+cover: $figure
+
+@append_to($body): //div[has-class("gallery")]
+<slideshow>: $@
+
+<related>: //div[has-class("container")][.//h3[contains(text(), "Notícias relacionadas")]]
+@append_to($body): $@
+@remove: $@//article/a/*
+
+<iframe>: $article//div[has-class("EmbeddedTweet")]//blockquote
+$frame: $@
+$to_remove: $@/ancestor::div[has-class("EmbeddedTweet")]
+@set_attr(src, @cite): $frame
+@before_el("./ancestor::div[has-class(\"EmbeddedTweet\")]")
+@remove: $to_remove
+
+#<iframe>: $article//div[has-class("EmbeddedTweet") and not(.//blockquote)]
+#@set_attr(src, @data-click-to-open-target): $@
+
+
+
+<pic>: $article//img[has-class("Emoji") or has-class("Avatar")]
+
+#  ___  _                   
+# |__ \| |                  
+#    ) | |_ _ __ _   _  ___ 
+#   / /| __| '__| | | |/ _ \
+#  |_| | |_| |  | |_| |  __/
+#  (_)  \__|_|   \__,_|\___|
+
+?true
+
+@background_to_image: $article//img
+
+# ULTIMATE PARSER 9000
+
+$problems: $body
+@while( $problems ) {
+  $test: $body//*[self::blockquote or self::aside or self::figure or (self::img and not(./ancestor::figure)) or (self::iframe and not(./ancestor::figure)) or (self::video and not(./ancestor::figure)) or (self::audio and not(./ancestor::audio)) or self::slideshow or self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)] or self::h1 or self::h2 or self::h3 or self::h4 or self::h5]
+ 
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br]
+ 
+ @split_parent: $problems
+}

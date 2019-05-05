@@ -1,0 +1,98 @@
+~version: "2.1"
+
+##r missing video https://www.breakingisraelnews.com/68380/watch-raising-money-for-hamas-satirical-filmmaker-takes-bds-to-the-next-level-05-16/
+# chuchu https://www.breakingisraelnews.com/125558/new-immigrants-settle-in-gaza-periphery-while-rockets-fall/
+site_name: "Breaking Israel News"
+body: //main//article[not(./ancestor::div[has-class("articles-listing")])]
+header: $body/header
+title: $header/h1
+
+meta: $header//div[has-class("entry-meta")]
+author: $meta//span[has-class("author")]/a
+#author_url: $author/@href
+
+@datetime: $header//span[has-class("posted-on")]//time/span
+published_date: $@
+
+# report not removed ad https://www.breakingisraelnews.com/76003/high-ranking-chinese-official-signs-memorandum-understanding-visit-israel/
+@remove: $body//div[has-class("ubm_premium_banner")]
+
+<figure>: $body//div[has-class("wp-caption")]
+<figcaption>: $@//p[has-class("wp-caption-text")]
+
+<div>: //table[.//figure]
+
+@replace("\\.jpg$", ".jpg###_", "i"): $body//a/@href
+@replace("\\.png$", ".png###_", "i"): $body//a/@href
+@replace("\\.jpeg$", ".jpeg###_", "i"): $body//a/@href
+@replace("\\.gif$", ".gif###_", "i"): $body//a/@href
+
+@unsupported: $body//div[has-class("playbuzz")]
+
+##r missing embed https://www.breakingisraelnews.com/68380/watch-raising-money-for-hamas-satirical-filmmaker-takes-bds-to-the-next-level-05-16/
+<iframe>: $body//script[contains(@src, "foxnews.com")]
+@replace("embed\\.js\\?(id=.*?(&|$))", "video-embed.html?video_$1"): $@/@src
+
+@set_attr(href, "./ancestor::a/@href"): $body//a[not(ends-with(@href, "###_"))]//img
+
+# ads not removed: https://www.breakingisraelnews.com/125074/palestinians-the-other-peace-deal-opinion/
+# https://www.breakingisraelnews.com/89270/reflections-50th-anniversary-six-day-war-opinion/
+@remove: $body//a[.//img and (contains(@href, "friendsoflibi.org") or contains(@href, "causematch.com/en/projects")) or contains(@href, "offers.israel365.com")]
+@remove: $body//a[contains(@href, "breakingisraelnews.com/sign-up-here")]
+@remove: $body//img[contains(@src, "IN-HearOIsrael-SolidPic")]
+
+<u>: $body//*[contains(@style, "text-decoration: underline;")]
+@remove: $body//noscript
+
+@after(<br>): $body//blockquote/p
+
+@remove: $header
+@remove: $body//div[has-class("addtoany_content_bottom")]/following-sibling::*
+@remove: $body//footer[has-class("entry-footer")]
+
+cover: $body//*[has-class("featured-image")]//img
+cover!: $body//figure[has-class("featured-image")]
+
+@remove: $body//*[has-class("wpipa")]
+
+@wrap(<cite>): $body//blockquote[has-class("verse")]//p[last()]/*[last() and self::a]
+
+##r not aside https://www.breakingisraelnews.com/86451/white-house-press-secretary-slammed-hitler-quote-video/
+<p>: $body//aside[has-class("element")]
+
+##r not aside https://www.breakingisraelnews.com/92682/australian-synagogue-blocked-fear-terror-attack/
+<div>: $body//aside[has-class("story-bottom")]
+
+#  ___  _                   
+# |__ \| |                  
+#    ) | |_ _ __ _   _  ___ 
+#   / /| __| '__| | | |/ _ \
+#  |_| | |_| |  | |_| |  __/
+#  (_)  \__|_|   \__,_|\___|
+
+?true
+@replace("\\s", " "): //text()
+
+# ULTIMATE PARSER 9000
+
+$problems: $body
+@while( $problems ) {
+  $test: $body//*[self::blockquote or self::aside or self::figure or (self::img and not(./ancestor::figure)) or self::iframe or self::slideshow or self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)]]
+ 
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br or ancestor::ul or ancestor::li]
+ 
+  @split_parent: $problems
+}
+
+?path: /*privacy-policy.*
+?path: /*contact-us.*
+?path: /*about-us.*
+?path: /*advertise-with-us.*
+?path: /*support.*
+?path: /*copyright-policy.*
+?path: /*sitemap.*
+?path: /*emergency-donate.*
+?path: /*poll.*
+?exists: $body//form
+
+body!!: null

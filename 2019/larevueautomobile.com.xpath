@@ -1,0 +1,114 @@
+~version: "2.1"
+
+site_name: "La Revue Automobile"
+body: //div[has-class("gallery-page") or has-class("single-blog-page-area")]/div[has-class("container")]/div
+title: $body//div[has-class("header-page-title")]
+meta: $body//div[has-class("share-section")]
+author: $meta//span[has-class("author")]/a
+@remove: $author/i[has-class("user-icon")]
+date: $meta//span[has-class("date")]
+date: $body//span[has-class("date")]
+@remove: $date/i
+@datetime(0, "en", "dd/MM/y"): $date
+published_date: $@
+@remove: $date
+
+<slideshow>: $body//div[has-class("slider-area")]
+$os: $@
+<iframe>: $@/next-sibling::span[has-class("btn-theme")]/a
+$frame: $@
+@set_attr(src, @href): $frame
+@inline: $frame
+$dom: $@
+<slideshow>: $dom//div[has-class("slider-area")]
+$slideshow: $@
+@after_el("./ancestor::html[1]"): $@
+@remove: $os[next-sibling::*//html]
+@remove: $dom
+@match("#(.+)", 1): $body//slideshow//img/@title
+@append_to("./ancestor::slideshow//div[not(.//img) and @id=./ancestor::slideshow//img/@title]"): $body//slideshow//img
+<figure>: $body//slideshow//div[has-class("slider-direction")]
+$figure: $@
+<figcaption>: $figure//*[has-class("title1")]
+@wrap_inner(<b>): $@
+@append_to("./../figcaption"): $figure//*[has-class("title2")]
+
+$z: $body//div[has-class("view-area") and next-sibling::div[./ul[@role="tablist"]]]
+@remove: $z/next-sibling::div
+@remove: $z
+
+<related>: $body//div[has-class("hot-news")]
+@prepend_to("./next-sibling::related"): $@/prev-sibling::div[has-class("view-area")]
+
+@remove: $body//div[has-class("like-section")]
+# <related>: $body//div[has-class("like-section")]
+# $related: $@
+# @remove: $related//h3
+# @combine: $related/next-sibling::related
+
+@remove: $body//div[has-class("header-page-locator")]
+@remove: $meta
+@remove: $body//div[has-class("share-section")]
+@remove: $body//*[has-class("next-pre-section")]
+
+@append_to("./ancestor::related"): $body//related//a
+@remove: $body//related//a[position() > 5]
+
+<table>: $body/div[has-class("lra-bg") and .//div[has-class("lra-rating")] and count(div[has-class("col-sm-6")]) = 2 and count(div[has-class("col-sm-12")]) = 1]
+$table: $@
+@wrap(<tr>): $table/h4[has-class("lra-title")]
+@wrap_inner(<th>): $@
+@prepend(<tr>): $table
+@set_attr(valign, top): $@
+<td>: $table/div[has-class("col-sm-6")]
+@append_to("./preceding-sibling::tr"): $@
+<tr>: $table/div
+@wrap_inner(<td>)
+$td: $@
+@set_attr(colspan, 2): $td
+@wrap_inner(<b>): $table//h4
+@append("👍"): $table//i[has-class("fa-thumbs-up")]
+@append("👎"): $table//i[has-class("fa-thumbs-down")]
+@append("★"): $table//i[has-class("fa-star")]
+@append("☆"): $table//i[has-class("fa-star-o")]
+<span>: $table//i[has-class("fa")]
+
+$gal: $body//div[has-class("gellary-area-main")]/div/div
+<div>: $gal//ul
+<figure>: $gal//div[has-class("single-gellary")]
+@append(<figcaption>): $@
+@append_to("./../figure/figcaption"): $gal//li[1]/*[not(self::figure)]
+
+image_url: $body//img/@src
+
+@remove: $body//div[has-class("sidebar-area")]
+
+## <snippet "s">
+@replace("\\s", " "): //text()
+## <snippet end>
+## <snippet "imghref">
+# lowercase
+@replace("\\.png(?>\\?.*|)(?>#.*|)$", ".png", "i"): //a[.//img]/@href
+@replace("\\.jpg(?>\\?.*|)(?>#.*|)$", ".jpg", "i"): //a[.//img]/@href
+@replace("\\.jpeg(?>\\?.*|)(?>#.*|)$", ".jpeg", "i"): //a[.//img]/@href
+@replace("\\.gif(?>\\?.*|)(?>#.*|)$", ".gif", "i"): //a[.//img]/@href
+# image links
+@set_attr(href, "./ancestor::a/@href"): //a[(not(contains(@href, "wikipedia")) and not(contains(@href, "gettyimages"))) and not(ends-with(@href, ".png") or ends-with(@href, ".jpg") or ends-with(@href, ".jpeg") or ends-with(@href, ".gif"))]//img
+
+## <snippet end>
+## <snippet "letmedie">
+?true
+
+$problems: $body
+@while( $problems ) {
+  $test: $body//*[self::*[has-class("fb-post")] or self::blockquote or self::aside or self::figure[not(./ancestor::slideshow)] or self::img[not(./ancestor::figure)] or self::iframe[not(./ancestor::figure)] or self::slideshow or self::video[not(./ancestor::figure)] or self::audio[not(./ancestor::figure)] or self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)]]
+
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote[not(has-class("instagram-media"))] or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br or ancestor::ul or ancestor::ol or ancestor::li]
+
+  @split_parent: $problems
+}
+## <snippet end>
+
+?exists: $body/../../self::div[has-class("category-page") and .//div[has-class("navigation")]]
+
+body!!: null

@@ -1,0 +1,139 @@
+~version: "2.1"
+
+# report form https://trendy.pt/2017/10/boogie-chicks-carcavelos/
+
+# report no such cover https://trendy.pt/2014/09/capitao-phillips-estreia-dia-12-setembro-no-tvcine-1/
+# report page can be supported https://trendy.pt/2018/06/review-razer-meka/
+# report link to a bigger size image should be removed https://trendy.pt/2016/05/de-pequenino-e-que-se-torce-o-pepino-e-os-outros-vegetais-todos/
+site_name: "highres Trendy"
+body: //div[has-class("post")]
+
+cover: $body//img[has-class("main-single")]
+title: $body/h1[has-class("heading")]/a
+meta: $body/p[has-class("meta")]
+author: $meta/a[@rel="author"]
+
+@remove: $meta
+@remove: $body/h1[has-class("heading")]
+@remove: $body//div[@id="sssb-social"]
+@remove: $body//noscript
+@remove: $body//div[has-class("postauthor")]
+@remove: $body//div[has-class("postinfo")]
+
+<p>: $body//img[contains(@src, "zomato")]
+@append(@alt): $@
+
+# report no captions https://trendy.pt/2016/08/viva-o-verao-as-25-portuguesas-mais-sexy-em-biquini/
+<slideshow>: $body//div[has-class("tiled-gallery")]
+<figure>: $@//div[has-class("tiled-gallery-item")]
+<figcaption>: $@//div[has-class("tiled-gallery-caption")]
+
+<table>: $body//div[has-class("ratingblock")]
+$poll: $@
+@replace("(.*?):\\s*(.*?)$", "<th>$1</th><td> $2</td>"): $poll/p/text()
+@html_to_dom: $@
+@before_el("./.."): $@/*
+<tr>: $@/..
+@prepend_to("./preceding-sibling::td"): $poll//span[has-class("partialrating")]
+#@prepend_to(): $poll//span[has-class("partialrating")]
+@wrap(<tr>): $poll//h3
+@wrap_inner(<td>, colspan, 2): $@
+<pic>: $poll//*[has-class("icon-star")]
+@set_attrs(src, "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAMAAABEpIrGAAAA9lBMVEUAAAD01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EK0hryQAAAAUXRSTlMAAQIDBAUGBwgJDA0ODxAREhcZGhscICMlKCouNzw+QUJDRklQV1tdXl9vdHx/hoiMkZKUl5iio6aoqqutr7K0tbq8vsXHyszR1eDk6/H19/2wUcDwAAAA50lEQVQYGY3BC1cBQQAF4GsXqTaiqIhKpIT00kN6P1TE/f9/pl27e5oZO3P6Pig2kjDKcACjczIPgwzJOxic0rUOrRV6bqHV5UwOGg5919A4YSCLSKsM9WKQWM5m9bg/omB4drS9loJn5+qbOtO3zjKeaFTCwpAGDQCJd2rV4Ym/UqMGX/yFkfYRsh8ZYQ9/rAHnlCGKPVBRgaxLRQ6yTyrKkFhUNSFJU3UPSYmqH0gOGBgzlILogjPjmpW+pK8A0Rddk0MbrmyfnioENslpM4FA4ZlkCwKHbC9CUPzgDUS7S1Bs5fE/v381jRxdlWRsAAAAAElFTkSuQmCC", width, 16, height, 16): $@
+<pic>: $poll//*[has-class("icon-star-empty")]
+@set_attrs(src, "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAMAAABEpIrGAAABVlBMVEUAAAD01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01ELKEpNtAAAAcXRSTlMAAQIDBAUGBwgJCgsMDQ4PEBESExcZGhscICIjJSYnKCouMzY3ODw9PkBBQkNERklMTlBSVVdbXV5fYmlrbW9zdHx/g4aIjJGSlJeYoqOlpqiqq62vsrS1ubq8vsDDxcfIyszO0dXZ3ODk5uvx9ff5/fJXuWAAAAFWSURBVBgZjcH3PxtxAMfhz91FSkVqRMwiRuxRu9paRe3d2pTaQvL+/39xV7zyvZC8PI8y1ASVUwnbymkBKpVDCbClHH6RhApl9QlaD9lQVnNcWZ+hXFmEoVU6Yk1ZzHJtSfUQ0ZtKoV2uE5Yt+djh2p7JzTu4seRqAM7nvzZH8+XpWLnhRbf++8uz1MlMkfbw3K7+6KwO6YldFhv4eZDEE9OHc/hu6w2hSxiRlHcKTXrNWoMheQLHEFcmewv69SRwAN3yc3agVy+cHeiTydmHLqXZ2zCotMARxGWy/vBPaVFok98cM0oLQrn8LvgiQ4K4fGyolWGDcfkUQ6FcH6faLbm+8Vs+MVKSghMpuGyU1MK9fIY5VGAsCQngtE4RyJdpkaWBBCT67eIlYLcZqmS6xvUw6sgV2cTTI4MDpMbz9KxqH5iSIQzTBTI0nLEuU2dIGeqjep9HLjxg3rW8xqgAAAAASUVORK5CYII=", width, 16, height, 16): $@
+<pic>: $poll//*[has-class("icon-star-half")]
+@set_attrs(src, "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAMAAABEpIrGAAABL1BMVEUAAAD01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EL01EIl9WiiAAAAZHRSTlMAAQIDBAUGBwgKCwwODxAREhQXGBkaGxweICIlKCkqLi8wMTQ3ODs8PkFDRklNUFRXXF1faGxvdHyChYiMkZKUm52io6WmqKqrra+ytLe5vL7AwcXHyszP0drk5uvv8fX3+fv9yS9OlAAAAT1JREFUOE9909dSAjEAheGzCygqil1R7FgQe8Xu2rEgilLs5X//Z/BCULKwnKsk55skM5lIZgYaVDdhLuuDA+ir14eBVD2wxzf0evetcJLl3BvsgjMM3V59CHD0yKkX2AEcjUBn7b4dwJHyHFlmY4cGE5sXL5TAGFDYX431BCVJU8dPVMSRlC9Pvh+2mnSDEUeS3TG6uH33CcCQGgtVoJSWIqxIasjVBtYpLEmSAtlawE7BQmnsz1QD+xrm/nbzpd3Adwuz+o99ZQL/PUyrMnbaAD0wIzP7BghUP2nRvMOr6wTZrkuesWGC9jJ4iVuStMaVCcb5S3FC0iTvJlgt129ALqpOCBrA+a1f563wIZCOQcQAzwAfyz5J6koBkKjs/cDXeqA8jWSAZCVog6Rx5nDO/GFWvFmuRPvdKx75AW1OgQ0vpmY0AAAAAElFTkSuQmCC", width, 16, height, 16): $@
+
+#@remove: $body//iframe[contains(@src, "primetag2")]
+
+# report missing caption https://trendy.pt/2018/01/novo-talento-fnac-fotografia-2017/
+<figure>: $body//div[has-class("wp-caption")]
+<figcaption>: $@//p[has-class("wp-caption-text")]
+
+<span>: $poll//span[has-class("overrating")]
+$bar: $@
+@replace("%", ""): $bar/@style
+@style_to_attrs(width, width): $bar
+<pic>: $bar
+@set_attrs(src, "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAAYdEVYdFNvZnR3YXJlAHBhaW50Lm5ldCA0LjEuMvojzfEAAAAMSURBVBhXY2hy3QEAAswBgOVkG2YAAAAASUVORK5CYII=", height, 16): $@
+@map( $$ ) {
+  $bar_current: $@
+  @append(<current>, foo, "100"): //head
+  $lol: $@
+  @set_attr(bar, $bar_current/@width): $lol
+
+  @set_attr(bar, "1 Jan 1970 ", @foo, " second -", @bar, " second"): $lol
+  @datetime: $lol/@bar
+
+  @set_attr(bar, $@): $lol
+
+  @after(<pic>, src, "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAAYdEVYdFNvZnR3YXJlAHBhaW50Lm5ldCA0LjEuMvojzfEAAAAMSURBVBhXY5CXlwcAAL4AXrBUIuwAAAAASUVORK5CYII=", width, "./ancestor::html/head/current/@bar", height, 16): $bar_current
+  @remove: //head/current
+}
+
+$meta: //head/meta
+d: $meta[@name="twitter:description"]
+d: $meta[@name="og:description"]
+d: $meta[@name="description"]
+
+$otrendy: $d[starts-with(@content[normalize-space()], "O TRENDY")]
+@if( $otrendy ) {
+  description: $body//h2[normalize-space()]
+  description: $body//h1[normalize-space()]
+  description: $body//p[normalize-space()]
+}
+@if_not( $otrendy ) {
+  description: $d/@content[normalize-space()]
+}
+
+# report https://trendy.pt/2014/04/lexus-revela-novo-crossover-nx/
+<slideshow>: $body//div[has-class("flexslider")]
+
+# report https://trendy.pt/2018/01/tenis-adidas-dragon-ball/
+@json_to_xml: $body//div[has-class("jetpack-slideshow")]/@data-gallery
+$json: $@
+<figure>: $@/*
+$figure: $@
+<img>: $figure/src
+@set_attr(src, "./text()"): $@
+@html_to_dom: $figure/title
+<figcaption>: $@
+@html_to_dom: $figure/caption
+<cite>: $@
+@append_to("./../figcaption"): $@
+@append_to("./.."): $json
+<slideshow>
+
+@remove: $body//*[has-class("jetpack-slideshow-noscript")]
+@remove: $body//noscript
+
+@unsupported: $body//form
+
+#  ___  _                   
+# |__ \| |                  
+#    ) | |_ _ __ _   _  ___ 
+#   / /| __| '__| | | |/ _ \
+#  |_| | |_| |  | |_| |  __/
+#  (_)  \__|_|   \__,_|\___|
+
+?true
+
+@replace("\\s", " "): //text()
+@replace("(i\\d+\\.wp\\.com.*?)\\?.*?$", "$1"): //img/@src
+@replace("trendy.hi-media.pt", "trendy.pt"): //img/@src
+
+@set_attr(href, "./ancestor::a/@href"): $body//a[not(ends-with(@href, ".jpg")) and not(ends-with(@href, ".png")) and not(ends-with(@href, ".gif")) and not(ends-with(@href, ".jpeg")) and not(contains(@href, ".wp.com"))]//img[not(./ancestor::slideshow)]
+
+@set_attr(srcset, ""): //img
+@set_attr(src, @data-orig-file): //img
+# ULTIMATE PARSER 9000
+
+$problems: $body
+@while( $problems ) {
+  $test: $body//*[self::blockquote or self::aside or self::figure or (self::img and not(./ancestor::figure)) or self::iframe or self::slideshow or self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)]]
+ 
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br or ancestor::ul or ancestor::li]
+ 
+  @split_parent: $problems
+}

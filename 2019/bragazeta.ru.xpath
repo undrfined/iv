@@ -1,0 +1,106 @@
+~version: "2.1"
+
+site_name: "Брянские новости"
+
+body: //section/article
+title: $body/h1
+published_date: //meta[@name="date"]/@content
+
+##r time https://www.bragazeta.ru/world/2843079/
+@append(<time>): //head
+$time: $@
+@match("(.+?),", 1): $body/p[has-class("date")]
+@datetime(0, "ru", "dd MMMM"): $body/p[has-class("date")]
+@set_attr(time, $@): $time
+@set_attr(time, "1 Jan today + ", @time, " second"): $time[@time < 31536000]
+@datetime: $@
+published_date: $@
+
+@remove: $body/p[has-class("date")]
+@remove: $body//*[contains(., "fn_catch_next_video")]
+
+##d playbuzz https://www.bragazeta.ru/news/2019/03/27/na-skolko-vy-ekonomny/
+
+##r broken page https://www.bragazeta.ru/world/2841954/
+##r nested https://www.bragazeta.ru/world/2840170/
+##r nested2 https://www.bragazeta.ru/world/2826211/
+##^ https://www.bragazeta.ru/world/2825961/
+##^ https://www.bragazeta.ru/world/2825550/
+##r nested3 https://www.bragazeta.ru/world/2798232/
+##^ https://www.bragazeta.ru/world/2799914/
+##^ https://www.bragazeta.ru/world/2800737/
+##r nested4 https://www.bragazeta.ru/world/2804125/
+##^ https://www.bragazeta.ru/world/2825380/
+cover: $title/next-sibling::figure
+
+##r dynamic related https://www.bragazeta.ru/news/2017/03/15/bryanskiy-deputat-rasskazal-o-skandale-v-dume-i-uhode-jirinovskogo/
+
+@remove: $body//div[has-class("banner")]
+@remove: $body//div[starts-with(@id, "smi_teaser")]
+@remove: $body//section[has-class("news-list")]/../following-sibling::*
+@remove: $body//section[has-class("news-list")]
+
+@unsupported: $body//div[has-class("playbuzz")]
+
+<slideshow>: $body//div[has-class("fotorama")]
+
+@wrap(<figure>): $@//img
+@append(@data-caption)
+@wrap_inner(<figcaption>)
+@after_el("./ancestor::img"): $@
+
+@set_attr(src, @data-full): //img
+
+$meta: //head/meta
+description: $body//p[normalize-space()]
+description: $meta[@name="twitter:description"]/@content[normalize-space()]
+description: $meta[@name="og:description"]/@content[normalize-space()]
+description: $meta[@name="description"]/@content[normalize-space()]
+
+@remove: $body//div[@id="votes-for-news"]
+
+##r vk https://www.bragazeta.ru/news/2017/05/06/v-bryanske-snyali-na-video-hamovatogo-avtouchitelya/
+##^ https://www.bragazeta.ru/news/2017/05/04/opasnaya-situaciya-na-doroge-v-bryanskom-raycentre-popala-na-video/
+##^ https://www.bragazeta.ru/news/2017/05/06/v-seti-opublikovali-strannoe-foto-silno-razbitogo-vnedorojnika-v-bryanske/
+##^ https://www.bragazeta.ru/news/2017/05/08/dobrye-bryancy-nachali-poiski-hozyaev-poteryavshegosya-psa/
+@replace("<!\\[CDATA\\[", ""): //body//script[contains(., "VK.Widgets.Post")]
+
+# @snippet: "image_url"
+## <snippet "vk">
+@before(<vk>): /html/body
+@replace(".*(?<=VK\\.Widgets\\.Post\\()['\"](.*?)['\"]\\s*?,\\s*([\\d-]+)\\s*?,\\s*([\\d-]+)\\s*?,\\s*['\"](.*?)['\"].*(?=\\)).*", "<iframe did=\"$1\" src=\"https://vk.com/widget_post.php?owner_id=$2&post_id=$3&hash=$4\"></iframe>"): //body//script[contains(., "VK.Widgets.Post")]
+@html_to_dom: $@
+$doms: $@
+@append_to(/html/vk): $doms/iframe[@did=./ancestor::html/body//div/@id]
+@append_to("./ancestor::html/body//div[@id=(/html/vk/iframe/@did)[1]]"): $@
+@remove: $doms
+
+## <snippet end>
+
+##r figcaption https://www.bragazeta.ru/news/2019/04/16/stala-izvestna-lichnost-bryanca-kotoryy-pogib-v-pyanom-dtp-v-moskve/
+# @replace("\\s*$", ""): $body/p/text()[not(next-sibling::*)]
+## <snippet "s">
+@replace("\\s", " "): //text()
+## <snippet end>
+## <snippet "letmedie">
+?true
+
+$problems: $body
+@while( $problems ) {
+  $test: $body//*[self::*[has-class("fb-post")] or self::blockquote or self::aside or self::figure[not(./ancestor::slideshow)] or self::img[not(./ancestor::figure)] or self::iframe[not(./ancestor::figure)] or self::slideshow or self::video[not(./ancestor::figure)] or self::audio[not(./ancestor::figure)] or self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)]]
+
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote[not(has-class("instagram-media"))] or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br or ancestor::ul or ancestor::ol or ancestor::li]
+
+  @split_parent: $problems
+}
+## <snippet end>
+
+?path: /*photo.*
+
+<div>: $body//slideshow
+
+?path: /*about.*
+?path: /*feedback.*
+?path: /*reklama.*
+
+body!!: null

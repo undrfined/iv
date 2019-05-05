@@ -1,0 +1,222 @@
+~version: "2.1"
+
+##s andrew 20
+##s ilya 53
+##s david 50
+
+##r different galleries https://www.rallye-sport.fr/photos-essais-sordo-mc-2016/
+##r ilya missing all https://www.rallye-sport.fr/es11-sardaigne-2017/
+##r ilya missing wrc-2 https://www.rallye-sport.fr/es7-sardaigne-2017/
+##r ilya wrong image_url https://www.rallye-sport.fr/es6-bornes-2016/
+##r can be generated https://www.rallye-sport.fr/es6-terre-des-causses-2019/
+site_name: "Rallye Sport"
+article: //article[has-class("post") and not(has-class("group"))]//div[has-class("post-inner")]
+
+title: $article/h1[has-class("post-title")]
+body: $article//div[has-class("entry")]
+
+<figure>: $article//div[has-class("image-container")]
+<figcaption>: $@//div[has-class("image-caption")]
+
+##cdo andrew
+cover: $body//div[has-class("post-format")]//figure
+##
+
+##cdo david
+<h5>: $body//*[self::h3 or self::h2]
+##
+
+
+author: //*[has-class("author") and @itemprop="author"]
+@replace("^(?>par|vum|vun)(.*)", "$1", "i"): $author
+
+##cdo andrew
+@remove: $author
+##
+
+##cdo andrew ilya david
+@datetime(0, "fr", "dd MMMM y"): $article/p[has-class("post-byline updated")]/time[@itemprop="dateCreated"]
+published_date: $@
+##
+
+@set_attr(src, @data-lazy-src): $body//iframe
+@set_attr(src, "./*/@data-lazy-src"): $body//iframe
+@set_attr(src, "./ancestor::a/@data-src"): $article//a[@data-src]//img
+
+@remove: $body//noscript
+
+
+<figure>: $article//*[has-class("wp-caption")]
+<figcaption>: $@//*[has-class("wp-caption-text")]
+
+<slideshow>: $article//div[has-class("ngg-galleryoverview") and (count(preceding-sibling::*[not(self::script) and (not(self::p) or string-length(.) > 0)]) > 5 or count(following-sibling::*[not(self::script) and (not(self::p) or string-length(.) > 0)]) > 4)]
+
+<zone_classment>: $body//div[@id="zone_classement"]
+$zone_classment: $@
+@match("\"GET\",\\s*\"(.*?)\"", 1): $zone_classment/../script[contains(., "afficher_classement")]
+$script: $@
+<iframe>: $script
+$script: $@
+@set_attr(src, .): $@
+
+$script+: $body//iframe[contains(@src, "classement-live")]
+@remove: $body//section[@id="comments"]
+
+##cdo ilya
+@replace("(https?://|)\\.\\./(.*)", "/$2"): $script/@src
+##?
+#$z: $script[contains(@src, "..")]
+#@if_not( $z ) {
+##
+@inline: $script
+<dom>: $@
+$dom: $@
+@remove: $dom[.//head/title]
+##r https://www.rallye-sport.fr/es18-valais-2013/
+<div>: $dom/ancestor::p
+<details>: $dom//div[starts-with(@id, "colonne_")]
+$details: $@
+@wrap(<mega>): $dom//body/*[not(self::script) and not(self::div[@id="tableau_classement"])]
+@wrap(<mega>): $dom//body[not(mega)]/div[@id="tableau_classement"]/*[not(self::div[has-class("classements_annexes")] or self::br)]
+
+@set_attr(open, open): $details
+<summary>: $details//a[starts-with(@id, "texte-")]
+@remove: $@/img
+@after_el("./../zone_classment"): $dom
+
+@prepend(<block>): $dom//div[@id="tableau_classement"]
+$block: $@
+@clone: $dom//div[has-class("classements_annexes")]/*
+@wrap(<td>): $@
+@append_to("./ancestor::div[@id=\"tableau_classement\"]/block"): $@
+<table>: $block
+$table: $@
+@replace("(#|\\?).*", ""): $table//a/@href
+@set_attr(href, @href, "#", .): $table//a
+
+<details>: $dom//div[has-class("classements_annexes")]
+$details_big: $@
+
+@before(<anchor>, name, .): $details_big
+
+@set_attr(open, open): $details_big[not(contains(./a/@href, "?"))]
+<summary>: $details_big/a
+@wrap_inner(<b>): $@
+@append_to("./ancestor::body//div[@id=\"tableau_classement\"]//details[@open]"): $dom//mega
+
+@append(<iframe>, src, @href): $details_big[not(@open)]/summary
+@inline: $@
+$dompage: $@
+@match("\"GET\",\\s*\"(.*?)\"", 1): $@//div[@id="zone_classement"]/../script[contains(., "afficher_classement")]
+<iframe>: $@
+@set_attr(src, .): $@
+@inline: $$
+<dom>: $@
+$dom: $@
+@after_el("./ancestor::html[1]"): $dom
+@after_el("./.."): $@
+
+<dom>: $@
+$dom: $@
+@remove: $dom[.//meta[@property="og:url" and (ends-with(@content, "rallye-sport.fr") or ends-with(@content, "rallye-sport.fr/"))]]
+@remove: $dom//div[has-class("classements_annexes")]
+<div>: $dom/ancestor::p
+<details>: $dom//div[starts-with(@id, "colonne_")]
+$details: $@
+@wrap(<mega>): $details
+@set_attr(open, open): $details
+<summary>: $details//a[starts-with(@id, "texte-")]
+@remove: $@/img
+
+@remove: $dompage
+
+@set_attr(open, open): $details_big
+
+##do ilya
+#}
+##
+
+##do andrew
+# @unsupported
+##
+
+# @before_el("./..//dom"): $@/../a[@name="tableau_classement"]
+<anchor>: $@/../a[@name="tableau_classement"]
+@remove: $zone_classment
+
+##do ilya
+#<th>: $body//table//tr[has-class("gras")]//td
+##?
+<th>: $body//table//tr[has-class("gras") or contains(@style, "background-color")]//td
+##
+<th>: $body//table//tr[contains(@style, "#004586")]//td
+<th>: $body//table//td[@bgcolor = "#004586"]
+
+@wrap(<p>): $body/strong[./*]
+
+@set_attr(border, border): $body//table
+
+@append_to($body): //script[contains(@src, "pronostics")]
+<div>
+@unsupported
+
+<pic>: $body//table//img
+<pic>: $body//img[contains(@src, "emoji")]
+
+@replace("(http.+?)(?=\\d+w)(\\d+)w(?:,|$)", "<link src=$1 res=$2>"): $body//pic/@srcset
+@append(@srcset): $body//pic[@srcset]
+@html_to_dom: $@
+@set_attr(src, .//link[not(../link/@res>@res)]/@src): $body//pic[@srcset]
+@set_attr(srcset, ""): $$
+
+$meta: //head/meta
+image_url: $meta[(@property="twitter:image" or @name="twitter:image") and not(contains(@content, "logo-rallye-sport"))]/@content[normalize-space()]
+image_url: $meta[(@property="og:image" or @name="og:image") and not(contains(@content, "logo-rallye-sport"))]/@content[normalize-space()]
+image_url: $cover//img/@src
+
+@after_el("./ancestor::table"): $body//table[.//table]/tr/following-sibling::*[not(self::tr or self::th or self::td)]
+# @after_el("./ancestor::table"): $body//table[.//table]/div
+@remove: $body//div[has-class("sidebar")]
+@remove: $body//footer[@id="footer"]
+
+<pic>: $body//img[contains(@src, "Bouton-App-Store") or contains(@src, "Bouton-Play-Store")]
+#  ___  _                   
+# |__ \| |                  
+#    ) | |_ _ __ _   _  ___ 
+#   / /| __| '__| | | |/ _ \
+#  |_| | |_| |  | |_| |  __/
+#  (_)  \__|_|   \__,_|\___|
+
+?true
+
+## <snippet "imghref">
+# lowercase
+@replace("\\.png(?>\\?.*|)(?>#.*|)$", ".png", "i"): //a[.//img]/@href
+@replace("\\.jpg(?>\\?.*|)(?>#.*|)$", ".jpg", "i"): //a[.//img]/@href
+@replace("\\.jpeg(?>\\?.*|)(?>#.*|)$", ".jpeg", "i"): //a[.//img]/@href
+@replace("\\.gif(?>\\?.*|)(?>#.*|)$", ".gif", "i"): //a[.//img]/@href
+# image links
+@set_attr(href, "./ancestor::a/@href"): //a[(not(contains(@href, "wikipedia")) and not(contains(@href, "gettyimages"))) and not(ends-with(@href, ".png") or ends-with(@href, ".jpg") or ends-with(@href, ".jpeg") or ends-with(@href, ".gif"))]//img
+
+## <snippet end>
+
+##cdo andrew ilya david
+@replace("\\s", " "): //text()
+##?
+#@replace("^\\s+$", " "): //p/text()
+##
+
+@wrap_inner(<i>): $body//*[contains(@style, "italic") and not(self::tr or self::td or self::th)]
+@wrap_inner(<u>): $body//*[contains(@style, "underline") and not(self::tr or self::td or self::th)]
+@wrap_inner(<b>): $body//*[contains(@style, "bold") and not(self::tr or self::td or self::th)]
+
+#  ULTIMATE PARSER 9000
+
+$problems: $body
+@while( $problems ) {
+  $test: $body//*[self::*[has-class("fb-post")] or self::blockquote or self::aside or self::figure or self::img[not(./ancestor::figure)] or self::iframe[not(./ancestor::figure)] or self::slideshow[not(./ancestor::figure)] or self::video[not(./ancestor::figure)] or self::audio[not(./ancestor::figure)] or self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)]]
+ 
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br or ancestor::ul or ancestor::ol or ancestor::li]
+ 
+  @split_parent: $problems
+}

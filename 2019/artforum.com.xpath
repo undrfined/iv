@@ -1,0 +1,156 @@
+~version: "2.1"
+
+##s sergei 6 
+
+##rF missing video https://www.artforum.com/video/gabriel-sierra-on-creating-untitled-111-111-111-x-111-111-111-12345678987654321-2013-45618
+##rF? missing figcaption for video https://www.artforum.com/print/201608/dan-nadel-on-joe-bradley-s-krasdale-2016-63454
+##rF missing related https://www.artforum.com/video/trailer-for-ben-rivers-the-sky-trembles-and-the-earth-is-afraid-and-the-two-eyes-are-not-brothers-2015-55238
+##rF missing related https://www.artforum.com/news/german-prosecutor-investigates-artist-behind-holocaust-memorial-replica-79200
+ 
+site_name: "Artforum"
+body: //article[has-class("reviews-list__article") or has-class("news__article") or has-class("blog-article") or has-class("video-detail__content")]
+header: $body/header[has-class("blog-article__header")]
+
+
+@remove: $body/*[has-class("slug--margin-top")]
+
+title: $body//h1[has-class("news__title") or has-class("blog-article__header")]/a
+title: $body/div[has-class("blog-article__header")]/h1
+title: $body/h1[has-class("topten-bio__title")]
+title: $body/h1[has-class("video__title--single")]
+title: $body//h1[has-class("picks__h1") or has-class("previews__h1") or has-class("reviews__h1")]/a
+
+subtitle: $body/div[has-class("section-heading")]
+subtitle: $body//h2[has-class("review__venue")][1]/text()
+@replace("^\\s+(.*?)", "$1"): $subtitle
+
+author: $body//div[has-class("blog-article__meta")]//a[contains(@href, "/contributor/")]
+@remove
+
+
+subtitle: $body//div[has-class("blog-article__meta")]
+
+##do
+<h1>: $body//h2[has-class("review__venue")]
+@after_el("./ancestor::div[has-class(\"review__review\")]//h1[has-class(\"review__venue\")]"): $body//h2[has-class("review__place")]
+##?
+# subtitle: $body//h2[has-class("review__place")]
+##
+
+@replace("^(.*?)•", "<date>$1</date>", "s"): $subtitle/*[has-class("article-list__publish-date")]
+@replace("^([^•]*)$", "<date>$1</date>", "s"): $subtitle/*[has-class("article-list__publish-date") and not(contains(., "<date>"))]
+
+@html_to_dom: $subtitle/*[has-class("article-list__publish-date")]
+published_date: $@/date
+@remove
+
+@replace("^\\s*?•", ""): $subtitle/span[has-class("article-list__byline")]
+
+time: $body//div[has-class("news-list__article-meta")]
+@datetime(0, "en", "MMMM dd y 'at' hh:mma"):
+published_date: $@
+@remove: $header
+
+@json_to_xml: //script[@data-type="application/ld+json"]
+published_date: $@/datePublished
+
+##cdo sergei
+@prepend_to($body): //div[has-class("video-outer-wrapper")]
+##
+@wrap_inner(<b>): $body//p[has-class("blog-article__lead")]
+<span>: $title/a
+
+<figure>: $body//div[has-class("blog-article__image") or has-class("review__primary-image")]
+$figure+: $@
+<figure>: $body//div[has-class("article-image-container")]
+$figure+: $@
+<figure>: $body//div[has-class("news-detail__primary-image")]
+$figure+: $@
+<figcaption>: $figure//*[has-class("blog-article__caption")]
+
+<figure>: $body//div[has-class("video-wrapper")]
+<figcaption>: $@/next-sibling::p[has-class("video-caption")]
+@append_to("./prev-sibling::figure"): $@
+
+cover: $body//div[has-class("news-detail__image-float")]//figure
+cover: $body//figure[has-class("primary-image") or has-class("review__primary-image")]
+
+@json_to_xml: $body//af-dot-carousel/@slides-json
+<slideshow>: $@
+<img>: $@/*
+@set_attrs(src, ./pathSquare[string-length(.)>0], src, ./path[string-length(.)>0], src, ./pathLarge[string-length(.)>0]): $@
+@wrap(<figure>)
+@append(<figcaption>, content, ./img/captionFormatted): $@
+@append(<cite>, content, ./../img/copyright): $@
+@html_to_dom: $@/../../*/@content
+@append_to("./.."): $@
+@before_el("./parent::af-dot-carousel"): $@/ancestor::slideshow
+
+@remove: $time
+@remove: $body//af-share-toggle
+@remove: $body//af-more-images-link[not(*)]
+@remove: $body//div[has-class("video__tags")]
+
+@clone: $body//p[has-class("contrib-link")]/a[last()]
+author: $@
+
+@remove
+@clone: $body//p[has-class("contrib-link") and not(a)]
+$z: $@
+author: $z
+
+@replace("^\\s*—", ""): $author
+@remove: $z
+# @json_to_xml: //head/script[@data-type="application/ld+json"]
+# author: $@/author/name[not(starts-with(., "_"))]
+
+
+<aside>: $body//div[has-class("blog-article__pullquote")]
+
+<div>: $body//li[has-class("topten__item")]
+<h1>: $@/span[has-class("topten-item__title")]
+@map( $@ ) {
+  $cc: $@
+  @prepend(". "): $cc
+  @prepend_to($cc): $index
+}
+@remove: $body//section[has-class("review__content")]//figure[has-class("article-image-container")][1]
+
+# <iframe>: //div[has-class("news-article__after")]/af-related-articles
+# @set_attr(src, "https://www.artforum.com/api/items/", "@:article-id", "\\/related"): $@
+# @inline
+# <a>: $@/_embedded/*/*
+# @set_attr(href, ./url): $@
+# <related>: $$/..
+# @append_to($body): $@
+
+<div>: $body/ancestor::ul
+<div>: $body/ancestor::li
+
+
+## <snippet "imghref">
+# lowercase
+@replace("\\.png(?>\\?.*|)(?>#.*|)$", ".png", "i"): //a[.//img]/@href
+@replace("\\.jpg(?>\\?.*|)(?>#.*|)$", ".jpg", "i"): //a[.//img]/@href
+@replace("\\.jpeg(?>\\?.*|)(?>#.*|)$", ".jpeg", "i"): //a[.//img]/@href
+@replace("\\.gif(?>\\?.*|)(?>#.*|)$", ".gif", "i"): //a[.//img]/@href
+# image links
+@set_attr(href, "./ancestor::a/@href"): //a[(not(contains(@href, "wikipedia")) and not(contains(@href, "gettyimages"))) and not(ends-with(@href, ".png") or ends-with(@href, ".jpg") or ends-with(@href, ".jpeg") or ends-with(@href, ".gif"))]//img
+
+## <snippet end>
+## <snippet "letmedie">
+?true
+
+$problems: $body
+@while( $problems ) {
+  $test: $body//*[self::*[has-class("fb-post")] or self::blockquote or self::aside or self::figure[not(./ancestor::slideshow)] or self::img[not(./ancestor::figure)] or self::iframe[not(./ancestor::figure)] or self::slideshow or self::video[not(./ancestor::figure)] or self::audio[not(./ancestor::figure)] or self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)]]
+
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote[not(has-class("instagram-media"))] or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br or ancestor::ul or ancestor::ol or ancestor::li]
+
+  @split_parent: $problems
+}
+## <snippet end>
+
+?exists: //section[has-class("paywall")]
+
+body!!: null

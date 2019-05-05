@@ -1,0 +1,130 @@
+~version: "2.1"
+
+site_name: "Auto Bild"
+##r dynamic poll https://www.auto-bild.ro/stiri/romanii-prefera-o-dacia-logan-cu-transmisie-robotizata-sondaj-auto-bild-romania-83651.html
+##r unsupported video https://www.auto-bild.ro/video/adrian-grigore-pozitia-corecta-volan-162180.html
+##r missing captions https://www.auto-bild.ro/stiri/google-maps-va-presemnaliza-radarele-155300.html
+##r missing cover captions https://www.auto-bild.ro/stiri/rca-2019-bonus-malus-155306.html
+##r missing cover https://instantview.telegram.org/contest/auto-bild.ro/template15/?url=https://www.auto-bild.ro/stiri/noul-peugeot-508-162193.html
+
+#/L Elon Musk
+##r missing spaces between words https://www.auto-bild.ro/stiri/noul-peugeot-508-162193.html
+
+#/abror_khurramov
+##r high-res https://www.auto-bild.ro/stiri/jeep-gladiator-oficial-152724.html
+?not_exists: //div[has-class("gallery-container")]
+
+article: //article[@id]
+
+header: $article/*[1]
+body: $article//div[has-class("article-content")]
+
+
+@wrap(<notbody>): $body
+$body: $@
+
+meta: $header//div[has-class("post-meta")]
+@datetime: $meta/div[has-class("author")]/time/@datetime
+published_date: $@
+@replace("text:\\s*(.*?)/(.*?(?>/)|) .*$", "<author>$1</author> <photo>$2</photo>", "is"): $meta/div[has-class("author")]
+@html_to_dom: $meta/div[has-class("author")]
+$a_and_photo: $@
+@replace("/$", ""): $a_and_photo/photo
+author: $a_and_photo/author
+
+title: $header//h1[has-class("article-title")]
+
+##cdo
+kicker: $header//*[has-class("overtitle")]
+##
+
+cover: $header//*[has-class("gallery-first-image")]//img
+
+<iframe>: $header//div[has-class("box-gallery")]//a[i[has-class("iconphoto_library")]]
+@set_attr(src, @href): $@
+@inline: $$
+<slideshow>: $@//div[has-class("img-container")]//div[has-class("gallery-slider")]
+$slideshow: $@
+@prepend_to($body): $slideshow
+@if( $slideshow[count(.//img)=1] ) {
+  cover: $slideshow//img
+}
+
+@unsupported: $body//*[@id="lord-test-form"]
+@unsupported: $body//*[has-class("wp-polls")]
+
+<div>: $body//script[contains(@src, "videocms.ringier.ro/iframe")]
+##cdo
+@unsupported: $@
+##
+
+<blockquote>: $body//div[has-class("verdict")]
+
+@wrap(<b>, class, "header"): $body//h2
+@combine: $@/next-sibling::b[has-class("header")]
+cover: $article//div[has-class("featured-image")]//img
+@prepend_to($body): $article//div[has-class("featured-image")]//iframe
+
+<slideshow>: $body//div[has-class("gallery")]
+$slideshow: $@
+@replace("-\\d+x\\d+\\.", "."): $slideshow//img/@src
+<figure>: $slideshow//*[has-class("gallery-item")]
+<figcaption>: $@//*[has-class("gallery-caption")]
+
+# @before_el("./ancestor::div[has-class(\"gallery\")]"): $slideshow
+# @remove: $@/next-sibling::div[has-class("gallery")]
+# @remove: $dom
+
+<related>: $article/following-sibling::*[.//u[contains(., "Articole similare")]]
+@append_to($body): $@
+$related: $@
+<h1>: $related//*[has-class("headline")]
+
+@remove: $body[.//related]//related_2
+<related>: $body[not(.//related)]//related_2
+
+<figure>: $body//div[has-class("wp-caption")]
+<figcaption>: $@//*[has-class("wp-caption-text")]
+
+@wrap(<figure>): $cover
+$figure: $@
+@append(<figcaption>): $@
+@append(<cite>): $@
+@append_to($@): $a_and_photo/photo/text()
+cover!: $figure
+
+?exists: //div[has-class("gallery-container")]
+
+article: //div[has-class("content-gallery")]
+body: $article//div[has-class("gallery-container")]
+title: $article/header//div[has-class("attachment-title")]
+
+@json_to_xml: //head/script[@data-type="application/ld+json" and contains(., "author")]
+$json: $@
+author: $json/author/name
+published_date: $json/datePublished
+
+#  ___  _                   
+# |__ \| |                  
+#    ) | |_ _ __ _   _  ___ 
+#   / /| __| '__| | | |/ _ \
+#  |_| | |_| |  | |_| |  __/
+#  (_)  \__|_|   \__,_|\___|
+
+?true
+@replace("\\s", " "): //text()
+
+@set_attr(src, @data-src): //img
+@set_attr(srcset, @data-srcset): //img
+@replace("http[s]{0,1}://thumbor.unica.ro/.*?(http[s]{0,1}.*$)", "$1"): //img/@src
+
+# ULTIMATE PARSER 9000
+
+$problems: $body
+@while( $problems ) {
+  $test: $body//*[self::*[has-class("fb-post")] or self::blockquote or self::aside or self::figure or self::img[not(./ancestor::figure)] or self::iframe[not(./ancestor::figure)] or self::slideshow[not(./ancestor::figure)] or self::video[not(./ancestor::figure)] or self::audio[not(./ancestor::figure)] or self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)]]
+ 
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br or ancestor::ul or ancestor::li]
+ 
+  @split_parent: $problems
+}

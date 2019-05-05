@@ -1,0 +1,141 @@
+~version: "2.1"
+
+##s photo 25
+##s fuck 27
+
+site_name: "RTV Rijnmond"
+body: //section[has-class("page-content")]/article | //div[has-class("standaloneaudiovideo-template")]//div[has-class("col-lg-8")]
+header: $body/div[has-class("article-header")]
+title: $header//h1[has-class("article-title")]
+meta: $header/div[has-class("article-meta")]
+published_date: $meta/span[has-class("news-pubdate")]/@datetime
+@remove: $body//div[has-class("article-share")]
+@remove: $meta
+
+article_author: $body//div[has-class("article-author")]
+@append_to("./ancestor::div[has-class(\"article-author\")]"): $article_author//a[has-class("author")]/span[has-class("author-info")]/span
+@set_attr(author, ""): $@
+@combine(", "): $article_author//span[@author]/next-sibling::span[@author]
+author: $article_author//span[@author]
+@remove: $article_author
+
+##cdo photo
+#<h5>: $body//div[has-class("intro")]
+##?
+@wrap_inner(<b>): $body//div[has-class("intro")]
+##
+
+@html_to_dom: $body//div[has-class("inlinemedia")]/@data-accept
+@append_to("./.."): $@
+
+<video>: $body//div[has-class("media-player")]
+$media_player: $@
+<audio>: $body//video[has-class("media-player") and .//div[has-class("still-overlay")]//img[contains(@src, "6e81aed59a5c48baa4fd5818128d847b")]]
+$media_player+: $@
+
+@set_attr(src, @data-media-url): $media_player
+@replace(".*sourceid_string:([a-fA-F0-9]+)\\.js", "//rijnmond.bbvms.com/custom/getDownload?sourceid=$1"): $@
+@wrap(<figure>): $media_player
+<figcaption>: $$//div[has-class("video-title")]
+@after_el("./ancestor::video"): $@
+
+
+<slideshow>: $body//div[has-class("mediabox")]
+$ss: $@
+<figure>: $ss/div[has-class("big-images")]/div[.//img]
+<figcaption>: $@//span[has-class("mediabox-image-title")]
+@remove: $ss//*[has-class("thumbs")]
+cover: $ss[count(.//figure) = 1]//figure[not(.//audio)]
+@after_el("./ancestor::slideshow"): $ss//figure[.//audio]
+
+<related>: $body//div[has-class("read-more")]
+@replace("http://", "https://"): $body//a/@href
+
+@remove: //div[has-class("article-bottom")] | //div[has-class("article-social")]
+
+##cdo
+#<img>: $body//iframe[ends-with(@src, ".jpg") or ends-with(@src, ".JPG") or ends-with(@src, ".png") or ends-with(@src, ".PNG")]
+##
+
+# SINGLE VIDEO PAGE
+?exists: $body[has-class("col-lg-8")]
+
+section: $body/section[has-class("page-content")]
+<related>: $section//div[@id="relatedNewsTab"]
+@before_el("./ancestor::section[has-class(\"page-content\")]")
+@remove: $@//a/*
+@remove: $section//div[has-class("tab-block")]
+# @remove: $section
+@remove: $body//div[has-class("shares")]
+media_details: $body/div[has-class("media-details")]
+date: $media_details/p
+title: $media_details/h3
+@replace("^.*?(\\d)", "$1"): $date
+@datetime(0, nl, "d MMMM y"): $date
+published_date: $@
+@remove: $date
+
+<div>: $body//script[contains(@src, "rijnmond.bbvms.com")]
+@unsupported: $@
+
+
+
+?exists: $body[has-class("page-content") and div[has-class("page-header")]]
+
+title: $body/div[has-class("page-header")]//figcaption
+cover: $body/div[has-class("page-header")]/figure
+@remove: $body//div[has-class("men2")]
+<ul>: $body//div[has-class("men")]/div[has-class("btn-group")]
+@wrap(<li>): $@//a[has-class("btn")]
+
+?true
+<div>: $body//blockquote//footer
+
+<iframe>: $body//div[@id="LB24_LIVE_CONTENT"]
+@set_attr(src, "https://v.24liveblog.com/iframe/?id=", @data-eid): $@
+
+## <snippet "imghref">
+# lowercase
+@replace("\\.png(?>\\?.*|)(?>#.*|)$", ".png", "i"): //a[.//img]/@href
+@replace("\\.jpg(?>\\?.*|)(?>#.*|)$", ".jpg", "i"): //a[.//img]/@href
+@replace("\\.jpeg(?>\\?.*|)(?>#.*|)$", ".jpeg", "i"): //a[.//img]/@href
+@replace("\\.gif(?>\\?.*|)(?>#.*|)$", ".gif", "i"): //a[.//img]/@href
+# image links
+@set_attr(href, "./ancestor::a/@href"): //a[(not(contains(@href, "wikipedia")) and not(contains(@href, "gettyimages"))) and not(ends-with(@href, ".png") or ends-with(@href, ".jpg") or ends-with(@href, ".jpeg") or ends-with(@href, ".gif"))]//img
+
+## <snippet end>
+$placeholder: "rijnmond/logo.png"
+## <snippet "image_url">
+@append(<placeholder_image_url>): /html
+@append_to(/html/placeholder_image_url): $placeholder
+image_url: //head/meta[(@name="twitter:image" or @property="twitter:image" or @name="og:image" or @property="og:image") and not(contains(@content, /html/placeholder_image_url))]/@content[normalize-space()]
+image_url: $cover//img/@src
+image_url: $body//img/@src
+image_url: ""
+## <snippet end>
+
+##cdo
+#
+## <snippet "s">
+@replace("\\s", " "): //text()
+## <snippet end>
+#
+##
+
+<p>: $body//div[has-class("customhtml")]/div[not(.//h1 or .//h2 or .//h3 or .//h4 or .//h5)]
+## <snippet "letmedie">
+?true
+
+$problems: $body
+@while( $problems ) {
+  $test: $body//*[self::*[has-class("fb-post")] or self::blockquote or self::aside or self::figure[not(./ancestor::slideshow)] or self::img[not(./ancestor::figure)] or self::iframe[not(./ancestor::figure)] or self::slideshow or self::video[not(./ancestor::figure)] or self::audio[not(./ancestor::figure)] or self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)]]
+
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote[not(has-class("instagram-media"))] or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br or ancestor::ul or ancestor::ol or ancestor::li]
+
+  @split_parent: $problems
+}
+## <snippet end>
+
+?path: /*contactformulier.*
+
+body!!: null

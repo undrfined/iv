@@ -1,0 +1,176 @@
+~version: "2.1"
+
+##s eaxon 32
+
+##nr other table https://www.businesstraveller.com/airlines/2016/07/11/boeing-increases-forecast-of-new-aircraft-deliveries/
+##nr broken link https://www.businesstraveller.com/news/2016/03/03/latam-group-revamps-loyalty-programmes/
+##rn broken content order https://www.businesstraveller.com/opinion/abu-dhabi-summer-sun-doorstep/
+##rn bad style table https://www.businesstraveller.com/business-travel/2019/01/24/this-is-what-singapore-airlines-new-krisflyer-award-ticket-changes-mean-for-you/
+##^ https://www.businesstraveller.com/business-travel/2019/02/22/american-airlines-delta-and-united-vie-for-new-tokyo-haneda-routes/
+
+##r vlad wrong image_url https://www.businesstraveller.com/news/2016/05/11/marriott-opens-in-macedonia/
+##^ https://www.businesstraveller.com/news/2016/01/14/compensation-if-your-flight-is-struck-by-lightning/
+
+##r eaxon wrong cover and image_url https://www.businesstraveller.com/business-travel/2016/07/16/malaysia-airlines-launches-asia-australaisia-sale/
+##r missing google trends https://www.businesstraveller.com/business-travel/2019/01/29/emirates-served-40-per-cent-more-plant-based-meals-over-veganuary/
+site_name: "Business Traveller"
+
+
+
+article: //div[has-class("article-one-left")]
+header: $article/div[has-class("article-head")]
+
+title: $header//h1[has-class("page_banner_title")]
+body: $article/div[has-class("article-page-contents")]
+
+<footer>: $header//div[has-class("sponsoredText")]
+$footer: $@
+@append_to($body): $footer
+@prepend_to($@): $header//div[has-class("sponsoredImgInner")]//img
+<pic>: $@
+@set_attr(height, 26)
+@wrap_inner(<span>): $footer
+
+@combine: $body//div[has-class("article-page-items")]/next-sibling::div[has-class("article-page-items")]
+
+time_and_author: $header//div[has-class("article-time-ago")]
+@replace("(\\d{1,2} .{3} \\d{4}) by (.*?)$", "<time>$1</time><author>$2</author>"): $time_and_author
+@html_to_dom
+$dom: $@
+author: $dom/author
+published_date: $dom/time
+published_date: $dom
+
+
+cover: $article/div[has-class("article-featued-image")]//img
+
+<related>: //div[has-class("related-article")]
+@append_to($body): $@
+<h1>: $@//div[has-class("latest_posts_title")]
+
+##r not a figcaption https://www.businesstraveller.com/tried-and-tested/lounge-review-plaza-premium-lounge-terminal-4-london-heathrow/
+##r 
+
+# report https://www.businesstraveller.com/business-travel/2017/09/04/hong-kong-airlines-eyeing-london-new-york-san-francisco/
+<iframe>: $body//a[@data-flickr-embed]
+$flickr: $@
+@replace("(?>www\\.|)(flickr\\.com)/+photos/+.*?/+albums/+(\\d+).*", "embedr.$1/photosets/$2"): $@/@href
+@set_attr(src, @href): $flickr
+
+<figure>: $body//div[has-class("text-and-image")]
+$figure: $@
+<figcaption>: $@//div[has-class("tx-an-img-txt") and (has-class("full") or ((has-class("right") or has-class("left"))  and count(.//div[has-class("tx-an-img-text")]//*) < 2 ))]
+@after_el("./ancestor::figure"): $figure//div[has-class("tx-an-img-txt")]
+
+@set_attr(href, "./ancestor::a/@href"): $body//a[not(ends-with(@href, "jpg") or ends-with(@href, "png") or ends-with(@href, "jpeg"))]//img
+
+<iframe>: $body//div[has-class("mapLocations")]
+@set_attr(src, "https://www.google.com/maps?q=", @data-lat, ",", @data-lng, "&output=embed"): $@
+
+@before(<p>): ($body//*[has-class("city-guides-title")])[1]
+$div: $@
+@before(<anchor>, name, @id): $body//*[has-class("city-guides-title")]
+@clone
+@append_to($div)
+<a>
+@after(<br>)
+@set_attr(href, "#", @id)
+
+# https://www.businesstraveller.com/business-travel/2018/09/13/air-france-to-launch-flights-to-dallas-and-quito/
+@remove: $body//blockquote[has-class("wp-embedded-content")]
+
+@wrap(<notbody>): $body
+<div>: //*[descendant::notbody and not(self::html)]
+
+@unsupported: $body//div[has-class("wp-polls")]
+
+@replace("trends\\.embed\\.renderExploreWidget\\(\"(.*?)\", (.*?\\}), (.*?)\\)", "<id>$1</id> <req>$2</req> <query>$3</query>"): $body//script[contains(., "trends.embed.renderExploreWidget")]
+@html_to_dom: $@
+<iframe>: $@
+$frame: $@
+@json_to_xml: $frame/query
+<query>: $@
+@html_to_dom: $frame/req
+<req>: $@
+@set_attr(src, "./query/guestPath", "explore/", "./id", "?tz=-180&req=", "./req", "&eq=" "./query/exploreQuery"): $frame
+
+@remove: $body//iframe[@width = 1 and @height = 1]
+
+$head: /html/head
+$meta: $head/meta
+
+image_url: $meta[@name="twitter:image" and not(contains(@content, "bt_fallback"))]/@content[normalize-space()]
+image_url: $meta[@name="og:image" and not(contains(@content, "bt_fallback"))]/@content[normalize-space()]
+
+<iframe>: $body//script[contains(@src, "serve360.co")]
+
+<cite>: $body//blockquote/next-sibling::div[has-class("article-bq-author")]
+@append_to("./prev-sibling::blockquote"): $@
+
+@unsupported: $body//*[has-class("forms-collection")]
+@remove: $body//noscript
+
+##r recent https://www.businesstraveller.com/business-travel/2019/01/24/this-is-what-singapore-airlines-new-krisflyer-award-ticket-changes-mean-for-you/
+##r recent https://www.businesstraveller.com/business-travel/2018/04/03/cathay-pacific-adding-sixth-weekly-adelaide-flight/
+
+##r https://www.businesstraveller.com/business-travel/2018/09/19/delta-to-offer-one-off-non-stop-las-vegas-shanghai-flights/
+
+##r page can be supported https://www.businesstraveller.com/business-travel/2018/04/25/british-airways-increasing-flights-santiago-washington-dc/
+$table: $body//table
+<th>: $table//tr[position() = 2]//td
+@map( $table//tr ) {
+  <th>: $table//tr[prev-sibling::tr/prev-sibling::*[./th]]/td
+}
+@set_attr(align, center): $table//tr//*[self::td or self::th]
+@set_attr(valign, top): $table//tr//*[(self::td or self::th) and not(@valign or ancestor::tr/@valign)]
+@set_attr(border, 0): $table[not(@border)]
+# <div>: $table[.//table/../next-sibling::*[not(./*)]]
+# <div>: $table[.//table[not(./next-sibling::p)]]
+# <div>: $table//table[./next-sibling::p]
+
+@wrap(<s>): $body//*[has-class("broken_link")]
+
+#  ___  _                   
+# |__ \| |                  
+#    ) | |_ _ __ _   _  ___ 
+#   / /| __| '__| | | |/ _ \
+#  |_| | |_| |  | |_| |  __/
+#  (_)  \__|_|   \__,_|\___|
+
+?true
+@set_attr(srcset, @data-srcset): //img
+@set_attr(src, @data-src): //img
+
+image_url: $body//img/@src
+image_url: ""
+
+# report infographic https://www.businesstraveller.com/airlines/2016/10/14/airbus-delivers-10000th-aircraft/
+##r Infographic https://www.businesstraveller.com/opinion/science-flight-food/
+@set_attr(href, @src): $body//img[not(@href) and (contains(@src, "infographic") or contains(@alt, "infographic") or contains(@src, "Infographic") or contains(@alt, "Infographic"))]
+
+@wrap_inner(<i>): $body//*[contains(@style, "italic")]
+@wrap_inner(<u>): $body//*[contains(@style, "underline")]
+@wrap_inner(<b>): $body//*[contains(@style, "bold")]
+
+##cdo eaxon
+@replace("\\s", " "): //text()
+##
+
+# ULTIMATE PARSER 9000
+
+$problems: $body
+@while( $problems ) {
+  $test: $body//*[self::blockquote or self::aside or self::figure or (self::img and not(./ancestor::figure)) or (self::iframe and not(./ancestor::figure)) or (self::audio and not(./ancestor::figure)) or (self::video and not(./ancestor::figure)) or (self::slideshow and not(./ancestor::figure)) or self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)]]
+ 
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br or ancestor::ul or ancestor::li]
+
+  @split_parent: $problems
+}
+
+?exists: //div[has-class("access-denied-page-contents")]
+?path: /*your-password.*
+?path: /*rss-feeds.*
+?path: /*plan-and-book.*
+?path: /*our-websites.*
+
+body!!: null

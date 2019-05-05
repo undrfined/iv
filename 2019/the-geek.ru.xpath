@@ -1,0 +1,131 @@
+~version: "2.0"
+
+main: //main[has-class("site-main")]
+article: $main/article
+header: $article/header
+entry_action: $article/div[has-class("entry-action")]
+
+@set_attr(src, @href): //img[not(@src)]
+@detach: $$/@href
+@remove: $@
+
+title: $header/h1[has-class("entry-title")]
+body: $article/div[has-class("entry-wrapper")]
+author: $entry_action/div/a[2]
+author_url: $author/@href
+
+cover: $article/div[has-class("entry-media")]//img
+cover!: $article/div[has-class("entry-media")]//figure
+cover!: $article/div[has-class("entry-media")]//iframe
+cover!: $article/div[has-class("entry-media")]//video
+<img>: //div[has-class("hero")]
+@set_attr(src, @data-bg)
+cover!
+
+# slideshow
+<slideshow>: $body//*[has-class("gallery")]
+<slideshow>: $body//*[has-class("wp-block-gallery")]
+
+<iframe>: $body//div[has-class("infogram-embed")]
+@set_attr(src, "https://e.infogr.am/", @data-id, "?src=embed"): $@
+
+<iframe>: $body//script[contains(@src, "player.cnevids.com")]
+@replace("embedjs/+(.*?)/+video/+(.*?)\\.js", "embed/$2/$1"): $@/@src
+
+
+@remove: $article//div[has-class("entry-tags")]
+
+@replace("\\[button type=”link” link=”(.*?)[″”] size=”.+?” variation=”.+?”\\](.*?)\\[\/button\\]", "<p><a href=\"$1\">$2</a></p>"): $body//a[contains(text(), "[/button]")]
+@html_to_dom
+
+# vk
+#<iframe>: $body//div[starts-with(@id, "vk_poll")]
+#$vk_poll: $@
+#@html_to_dom: //script[contains(text(), "vk_poll")]
+#$dom
+#@match("vk_poll\", {}, \"(.*?)\"", 1): $@
+#@set_attr(src, "https://vk.com/al_widget_poll.php?poll_id=", $@): $vk_poll
+#@remove: $dom
+
+<iframe>: $body//div[starts-with(@id, "vk_post_")]
+$vk_post: $@
+@replace("vk_post_(-*\\d+)_(\\d+)", "owner_id=$1&post_id=$2"): $vk_post/@id
+
+
+@html_to_dom: //script[contains(text(), "vk_post_")]
+$dom
+@match("VK.Widgets.Post\\(.*, .*, .*, '(.*?)'\\)", 1): $@
+@set_attr(src, "https://vk.com/widget_post.php?", $vk_post/@id, "&hash=", $@/text()): $vk_post
+@remove: $dom
+
+
+# related
+<related>: $main//div[has-class("yuzo_related_post")]
+@append_to($body)
+
+@set_attr(src, @data-src): $article//img
+
+# srcset
+@set_attr(srcset, @data-srcset): $main//img[@data-srcset]
+@replace("(http.+?)\\s+?(?=\\d+w)(\\d+)w", "<link src=$1 res=$2>"): //img/@srcset
+@append(@srcset): //img[@srcset]
+@html_to_dom: $@
+@set_attr(src, .//link[not(../link/@res>@res)]/@src): //img[@srcset]
+
+@set_attr(src, "./parent::a/@href"): $main//slideshow//img[./parent::a][./ancestor::div[has-class("gallery-icon")]]
+
+@set_attr(href, "./../self::a/@href"): $body//a/img[not(ends-with(../@href, ".jpg"))][not(ends-with(../@href, ".png"))][not(ends-with(../@href, ".jpeg"))][not(ends-with(../@href, ".gif"))][not(./ancestor::slideshow)]
+
+
+@remove: $article//noscript
+
+# comment diffonly {
+#@append_to(//head): $cover
+#@if( "$body//img[contains(./ancestor::html/head/img/@src, @src)]" ) {
+#  cover!!: null
+#}
+# }
+
+@after_el("./ancestor::ol"): $body//ol
+@remove: $body//ol[string-length(.//text()) < 2]
+
+#  ___  _                   
+# |__ \| |                  
+#    ) | |_ _ __ _   _  ___ 
+#   / /| __| '__| | | |/ _ \
+#  |_| | |_| |  | |_| |  __/
+#  (_)  \__|_|   \__,_|\___|
+
+?true
+@replace("\\s", " "): //text()
+
+# ULTIMATE PARSER 9000
+# diffonly {
+<div>: //p[.//img]
+# }
+$problems: $body
+
+@while( $problems ) {
+  $test: $body//*[self::blockquote or self::aside or self::figure or (self::img and not(./ancestor::li) and not(./ancestor::figure)) or self::iframe or self::slideshow or self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)]]
+ 
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br or ancestor::ul]
+  $problems: ($problems)[1]
+ 
+  @if( $problems ) {
+  
+    $parent: $problems/parent::*
+    
+    @detach: $parent/node()
+    @set_attr("merge", $index): $@
+    <remove>: $parent
+    @after_el("./parent::*"): $problems
+    @combine: $body//self::*[prev-sibling::*/@merge = @merge]
+  }
+  
+}
+
+@remove: $article//img[string-length(@src) = 0]
+
+?path: /*advertising/*.*
+
+body!!: null

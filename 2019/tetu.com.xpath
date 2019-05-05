@@ -1,0 +1,126 @@
+~version: "2.1"
+
+site_name: "TÊTU"
+channel: "@tetuinfos"
+@remove: //iframe/iframe
+
+body: //article[has-class("type-post")]/div[has-class("share_box")]
+header: $body/header[has-class("entry-header")]
+title: $header/h1[has-class("entry-title")]
+meta: $header/div[has-class("entry-meta")]
+author: $meta/span[has-class("post_auteur_infos")]/a
+# author_url: $meta/span[has-class("post_auteur_image")]/a/@href
+# author_photo_url: $meta/span[has-class("post_auteur_image")]//img[not(ends-with(@src, "avatar-default.png"))]/@src
+
+@remove: $meta
+@remove: $body//div[has-class("sharing_box")]
+
+
+<related>: $body//blockquote[has-class("wp-embedded-content")]
+@remove: $body//iframe[has-class("wp-embedded-content") and @data-secret=ancestor::body//related/@data-secret]
+
+@remove: //img[string-length(@src) <= 0]
+@remove: $body//p[not(./*) and string-length(.) = 0]
+@combine: $body//related/next-sibling::related
+
+<aside>: $body//blockquote[not(has-class("imgur-embed-pub") or has-class("twitter-tweet") or has-class("twitter-video") or has-class("instagram-media"))]
+# @remove: $body//blockquote[has-class("twitter-tweet")][.//img]//a
+<div>: $body//blockquote[has-class("twitter-tweet")][.//img]
+
+<h5>: $body//h2
+##cdo
+#@wrap_inner(<a>): $@
+##
+cover: $body/div[has-class("image")][prev-sibling::header]//img
+
+@remove: $body/section[@id="bottom-promo"]
+@remove: $body/footer[has-class("entry-footer")]
+
+<iframe>: $body//div[has-class("issuuembed")]
+$issuu: $@
+@replace(".*issuu.com/(.*?)/docs/(.*?)/.*", "?u=$1&d=$2"): $issuu/@data-url
+@set_attr(src, "\\//e.issuu.com/anonymous-embed.html", @data-url): $issuu
+@unsupported: $issuu[@data-configid]
+
+ #   ___      _ _              
+ #  / __|__ _| | |___ _ _ _  _ 
+ # | (_ / _` | | / -_) '_| || |
+ #  \___\__,_|_|_\___|_|  \_, |
+ #                        |__/ 
+
+?exists: //body[has-class("gallery-template-default")]//div[@id="content" and has-class("site-content")]
+
+body: //div[@id="content" and has-class("site-content")]//section[has-class("container_diapo")]
+header: $body/div[has-class("top_diapo")]
+title: $header/h2
+meta: $header/div[has-class("entry-meta")]
+published_date: $header//time[has-class("published")]/@datetime
+author: $meta//span[has-class("byline")]
+@remove: $author/text()[1]
+@remove: $meta
+@remove: $body//div[has-class("bottom_diapo")]
+
+
+<slideshow>: $body//div[has-class("owl-carousel")]
+<figure>: $@//div[has-class("item")]
+@debug: $@
+@after(<figcaption>): $@/*[1 and self::a]
+$fc: $@
+@wrap(<span>): $fc/following-sibling::*
+@combine: $fc/following-sibling::*
+<b>: $fc/h3
+<cite>: $fc//span[has-class("photographe")]
+?true
+
+@unsupported: $body//div[has-class("tumblr-post")]
+##cdo
+## <snippet "s">
+@replace("\\s", " "): //text()
+## <snippet end>
+##
+
+
+<p>: $body/div[has-class("entry-content")]/div[not(@class or .//h3 or .//h4 or .//h5 or .//h6 or .//h2 or .//h1)]
+
+<tmpul>: $body//ul[.//aside]
+<tmpli>: $body//li[.//aside]
+
+## <snippet "imghref">
+# lowercase
+@replace("\\.png(?>\\?.*|)(?>#.*|)$", ".png", "i"): //a[.//img]/@href
+@replace("\\.jpg(?>\\?.*|)(?>#.*|)$", ".jpg", "i"): //a[.//img]/@href
+@replace("\\.jpeg(?>\\?.*|)(?>#.*|)$", ".jpeg", "i"): //a[.//img]/@href
+@replace("\\.gif(?>\\?.*|)(?>#.*|)$", ".gif", "i"): //a[.//img]/@href
+# image links
+@set_attr(href, "./ancestor::a/@href"): //a[(not(contains(@href, "wikipedia")) and not(contains(@href, "gettyimages"))) and not(ends-with(@href, ".png") or ends-with(@href, ".jpg") or ends-with(@href, ".jpeg") or ends-with(@href, ".gif"))]//img
+
+## <snippet end>
+## <snippet "letmedie">
+?true
+
+$problems: $body
+@while( $problems ) {
+  $test: $body//*[self::*[has-class("fb-post")] or self::blockquote or self::aside or self::figure[not(./ancestor::slideshow)] or self::img[not(./ancestor::figure)] or self::iframe[not(./ancestor::figure)] or self::slideshow or self::video[not(./ancestor::figure)] or self::audio[not(./ancestor::figure)] or self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)]]
+
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote[not(has-class("instagram-media"))] or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br or ancestor::ul or ancestor::ol or ancestor::li]
+
+  @split_parent: $problems
+}
+## <snippet end>
+@set_attr(href, ""): $body//slideshow//img
+<li>: $body//tmpli
+<ul>: $body//tmpul
+
+
+@replace("tetu\\.com/content", "tetu.com/wp-content/"): //img/@src
+
+$meta: //head/meta
+description: $meta[@name="twitter:description" or @property="twitter:description" or @name="og:description" or @property="og:description" or @name="description" or @property="description"]/@content[normalize-space()]
+@replace("^\\s*(.*?)\\s*$", "$1"): $description
+description: $body//p[normalize-space()]
+
+<pic>: //img[@height <= 150]
+
+?exists: $body//div[has-class("qiota")]
+
+@paywall

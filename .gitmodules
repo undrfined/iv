@@ -1,0 +1,3 @@
+[submodule "tools/ivdiff"]
+	path = tools/ivdiff
+	url = https://github.com/undrfined/ivdiff

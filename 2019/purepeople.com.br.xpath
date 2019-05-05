@@ -1,0 +1,55 @@
+~version: "2.1"
+
+site_name: "Purepeople"
+
+article: //div[@id="wb_contents_inside"]
+body: $article//div[has-class("main-column")]
+title: $article//h1[has-class("article__title")]
+
+<h5>: $body//div[has-class("article__chapo")]
+
+<ass>: $body//div[has-class("wdiapo-preview")]
+$slideshow: $@
+@append(<iframe>): $slideshow
+@set_attr(src, "\\/wbdiapo/", "./..//div[has-class(\"wdiapo-preview__media-cell\")]/@media_id"): $@
+@inline
+$medias: $@/medias
+<figure>: $medias/item
+$item: $@
+@html_to_dom: $item/html
+@html_to_dom: $item/legend_html
+<figcaption>: $@
+@html_to_dom: $item/copyright
+<cite>: $@
+@append_to("./../figcaption"): $@
+@after_el("./ancestor::ass"): $medias
+<slideshow>
+$ss: $@
+@remove: $slideshow
+
+cover: $ss[count(figure) = 1]//figure
+
+<related>: $body//div[has-class("c-more")]
+
+@remove: $body//div[has-class("article__bloc--sh4re")]
+@remove: $body/div[@id="ad-inread"]/following-sibling::*
+
+time: $body/div[has-class("article__bloc--date")]//time[has-class("article__date")]
+published_date: $time/@datetime
+@remove: $time
+
+## <snippet "s">
+@replace("\\s", " "): //text()
+## <snippet end>
+## <snippet "letmedie">
+?true
+
+$problems: $body
+@while( $problems ) {
+  $test: $body//*[self::*[has-class("fb-post")] or self::blockquote or self::aside or self::figure or self::img[not(./ancestor::figure)] or self::iframe[not(./ancestor::figure)] or self::slideshow[not(./ancestor::figure)] or self::video[not(./ancestor::figure)] or self::audio[not(./ancestor::figure)] or self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)]]
+
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote[not(has-class("instagram-media"))] or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br or ancestor::ul or ancestor::ol or ancestor::li]
+
+  @split_parent: $problems
+}
+## <snippet end>
