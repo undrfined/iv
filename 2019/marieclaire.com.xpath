@@ -1,0 +1,329 @@
+~version: "2.1"
+
+##n Fix description https://www.marieclaire.com/sex-love/news/g4560/best-sex-scenes/
+##n format better https://www.marieclaire.com/beauty/makeup/a22809592/beauty-bloggers-luxe-sephora-hauls/
+
+site_name: "Marie Claire"
+header: //header[has-class("content-header") or has-class("longform-header")]
+article: //div[has-class("content-container")]
+body: //div[has-class("standard-body") or has-class("listicle-body") or has-class("article-container") or has-class("longform-container")]
+
+title: $header//h1[has-class("content-hed")]
+subtitle: $header//h2[has-class("content-dek") and string-length(.) > 0]
+subtitle: $header//h2[has-class("content-dek")]/next-sibling::p
+meta: //div[has-class("content-info-metadata")]
+<p>: $meta//div[has-class("byline")]
+author: $@
+@remove: $author/text()[1]
+##do
+@replace(" and ", ", "): $author
+##
+
+$headings: $header//div[has-class("longform-header-headings")]
+title: $headings//h1
+subtitle: $headings//h2/next-sibling::p
+subtitle: $headings//h2
+
+published_date: $meta//time[has-class("content-info-date")]/@datetime
+# author_photo_url: $meta//div[has-class("content-info-byline-image")]//img/@src  
+
+<figure>: //div[has-class("listicle-slide-media-outer") or has-class("content-lede-image-wrap") or has-class("embed-image") or has-class("header-media")]
+$figure: $@
+@wrap(<figcaption>): $figure[not(.//figcaption)]//*[has-class("image-credit")]
+cover: $header//figure[has-class("header-media")]
+
+# <cite>: $figure//*[has-class("image-credit")]//span[has-class("image-copyright") ]
+<cite>: $figure//*[has-class("image-credit")]
+@append_to("./ancestor::figure//figcaption"): $@
+
+<cite>: $figure[.//figcaption]//div[has-class("image-credit")]
+@append_to("./ancestor::figure//figcaption"): $@
+
+##r missing dot https://www.marieclaire.com/food-cocktails/g4725/gin-cocktail-recipes/
+<h1>: $body//div[has-class("listicle-slide-hed")]
+@append("."): $@/span[has-class("listicle-slide-hed-number")]
+
+cover: $body//div[has-class("content-lede-image")]//figure
+
+<related>: $body//div[has-class("embed-editorial-links")]
+@after_el("./ancestor::a[not(.//related)]"): $@//a//a
+# @remove: $body//hr[last()]/following-sibling::*[not(self::related)]
+# @remove: $body//hr[last()]
+@append_to($body): $body//related
+@combine: $body//related/next-sibling::related
+
+##cdo
+# @unsupported: $body//div[has-class("embed-poll")]
+##
+
+<aside>: $body//blockquote[has-class("pullquote")]
+
+$z: $body//a[contains(@href, "subscribe.hearstmags.com") or contains(@href, "subscribe.aspx")]/ancestor::p[has-class("body-text")]
+@remove: $z/following-sibling::*[not(self::related or has-class("syndicate-source-link"))]
+@remove: $z/prev-sibling::p[has-class("body-text")]
+@remove: $z/prev-sibling::hr
+@remove: $z
+##cdo
+#<footer>: $body//*[has-class("syndicate-source-link")]
+##
+
+@unsupported: $body//div[has-class("glimmerPlayer")]
+@remove: $meta
+
+@unsupported: $body//div[has-class("embed-inner") and not(*)]
+
+@remove: $body//div[has-class("authors")]
+
+@before(<hr>): $body//p[has-class("body-tip")]
+@after(<hr>): $body//p[has-class("body-tip")]
+
+@remove: $body//hr[next-sibling::hr]
+
+
+@wrap_inner(<b>): $body//div[has-class("item-info-title")]
+@after(<anchor>, name, @id): $body//hr[@id]
+
+@unsupported: $body//div[has-class("pb_feed")]
+
+ #   _____       _ _                 
+ #  / ____|     | | |                
+ # | |  __  __ _| | | ___ _ __ _   _ 
+ # | | |_ |/ _` | | |/ _ \ '__| | | |
+ # | |__| | (_| | | |  __/ |  | |_| |
+ #  \_____|\__,_|_|_|\___|_|   \__, |
+ #                              __/ |
+ #                             |___/ 
+
+?exists: $article//div[has-class("slideshow-inner")]
+
+@json_to_xml: //script[@id="data-layer"]
+$id: $@/content/id
+@append(<iframe>): //head
+@set_attr(src, "https://www.marieclaire.com/ajax/contentmedia/?id=", $id): $@
+@inline
+$dom: $@
+@append(<display>): $dom
+$figure: $dom/*/data
+
+@html_to_dom: $figure/headline
+<h1>: $@
+@wrap_inner(<a>): $@
+@append_to("./.."): $$
+@html_to_dom: $figure/dek
+@append_to("./.."): $@
+
+
+<product>: $figure[type="product"]/product
+$product: $@
+
+@append(<display>): $product/..
+
+@html_to_dom: $product/name
+<h1>: $@
+@append_to("./ancestor::product/../display")
+
+<figure>: $product/image
+$ddd: $@
+@html_to_dom: $ddd/photo_credit
+<figcaption>: $@
+@wrap_inner(<cite>): $@
+
+@replace("(\\d+).*", " $1"): $ddd/srcset/item/bp
+@combine(", "): $ddd/srcset/item/next-sibling::item
+@replace("^", ""): $ddd/srcset
+
+<img>: $ddd/src
+$img: $@
+@set_attr(src, "."): $img
+@set_attr(srcset, "./../srcset"): $img
+
+@append_to("./ancestor::product/../display"): $ddd
+
+@html_to_dom: $product/brand
+<p>: $@
+@append_to("./ancestor::product/../display")
+
+@html_to_dom: $product/vendor
+<p>: $@
+@wrap_inner(<b>): $@
+@append_to("./ancestor::product/../display")
+
+@html_to_dom: $product/item_on_sale
+<p>: $@
+@wrap_inner(<b>): $@
+@append_to("./ancestor::product/../display")
+
+@html_to_dom: $product/price
+<p>: $@
+@wrap_inner(<b>): $@
+@append_to("./ancestor::product/../display")
+
+<a>: $product/action
+@set_attr(href, "./ancestor::product/outboundLink"): $@
+@append_to("./ancestor::product/../display")
+
+@html_to_dom: $product/description
+<div>: $@
+@append_to("./ancestor::product/../display")
+
+@remove: $product/../*[not(self::display)]
+
+@remove: $figure/media/srcset/item/*[self::src or self::bp]
+@combine(", "): $figure/media/srcset/item/next-sibling::item
+@replace("0", "0"): $figure/media/srcset/item
+<img>: $figure/media/srcset/item
+$img: $@
+@set_attr(srcset, "."): $img
+@set_attr(src, "."): $img
+<figure>: $figure/media
+$ff: $@
+
+<figcaption>: $figure/copyright[string-length(normalize-space(.)) > 0]
+$fc: $@
+@prepend_to("./../figcaption"): $figure/credit
+$credit+: $@
+@wrap(<figcaption>): $figure[not(.//figcaption)]/credit
+$credit+: $@
+
+@append(" / "): $credit[string-length(normalize-space(.)) > 0 and string-length(normalize-space(./../text())) > 0]
+
+@append_to("./../figure"): $figure/figcaption
+@wrap_inner(<cite>): $@
+@wrap(<a>): $figure/figure//img
+@set_attr(href, "./ancestor::data/clickable_image_url"): $@
+
+@append_to("./.."): $img
+
+# $z: $dom//type[.="product"]
+
+
+@html_to_dom: $ff//embed_code
+<embed_code>: $@
+@remove: $figure[.//embed_code[string-length(.) = 0 and not(*)] and not(h1) and not(dom)]/..
+$ssf: $figure[.//embed_code[string-length(.) = 0 and not(*)] and h1 and dom]
+@remove: $ssf/figure
+
+@remove: $figure[not(display)]/*[not(self::h1 or self::dom or self::media or self::figure)]
+@remove: $figure[not(display)]/media/*[not(self::srcset)]
+
+@remove: $figure/../id
+
+##r wrong cite https://www.marieclaire.com/sex-love/news/g4560/best-sex-scenes/
+body: $article//div[has-class("slideshow-inner")]
+
+
+@append_to($body): $dom
+
+@remove: $body//div[has-class("slide-container")]
+
+<h1>: $body//div[has-class("slideshow-slide-hed")]
+
+<figure>: $body//*[has-class("slide-media-inner")]
+<figcaption>: $@//div[has-class("image-credit")]
+<cite>: $@/span[has-class("image-copyright") or has-class("image-photo-credit")]
+
+
+<figure>: $body//*[has-class("content-lede-image-wrap") or has-class("embed-image")]
+cover: $@
+<figcaption>: $@//div[has-class("image-credit")]
+<cite>: $@/span[has-class("image-copyright") or has-class("image-photo-credit")]
+
+
+@remove: $body//*[has-class("slideshow-toolbar-count")]
+@remove: $body//*[has-class("slide-button-view-gallery")]
+@remove: $body//*[has-class("next-with-recirc")]
+@remove: $body//*[has-class("slide-button-skip-ad")]
+
+
+##cdo
+#<footer>: $article//div[has-class("syndicate-source-link")]
+##?
+<p>: $article//div[has-class("syndicate-source-link")]
+##
+@append_to($body)
+?true
+
+<unsupported>: $body//*[@player.dior.com]
+<unsupported>: $body//script[contains(@src, "player.ooyala.com")]
+<unsupported>: $body//script[contains(@src, "embed.tidal.com")]
+<unsupported>: $body//script[contains(@src, "player.cnevids.com")]
+
+@unsupported: //unsupported
+
+@remove: $body//*[has-class("breaker-ad-text")]
+@remove: $body//div[has-class("breaker-ad")]
+@after(" / "): //cite[has-class("image-credit")]/span[next-sibling::span]
+@remove: $body//*[starts-with(@class, "product-embed")]
+
+
+@clone: $subtitle
+<subtitle>: $@
+@append_to(//head): $@
+
+$meta: //head/meta
+##cdo
+#description: $meta[(@name="description" or @property="description" or @name="twitter:description" or @property="twitter:description" or @name="og:description" or @property="og:description")]/@content[normalize-space()]
+##?
+description: $subtitle
+description: $meta[(@name="twitter:description" or @property="twitter:description" or @name="og:description" or @property="og:description")]/@content[normalize-space()]
+##
+
+description: $body//p[normalize-space()]
+
+## <snippet "srcset">
+@set_attrs(src, @data-lazy, src, @data-src, srcset, @data-srcset, src, @data-lazy-src, srcset, @data-lazy-srcset): //img
+## <snippet end>
+
+$picture: //picture
+@match("min-width:\\s*(\\d+)", 1): $picture/source/@media
+@set_attr(srcset, ./../source[not(../source/@media>@media)]/@data-srcset): $picture[.//source[@data-srcset]]//img
+@set_attr(srcset, ./../source[not(../source/@media>@media)]/@srcset): $picture[.//source[@srcset]]//img
+
+@replace("&frame=\\d+", "&"): $body//img/@*[name(.) = "src" or name(.) = "srcset"]
+
+##do
+@replace("crop=.*?&resize=(2048):\\*", "resize=1280:*"): //img/@*[name(.) = "src" or name(.) = "srcset"]
+?not_exists: $article//div[has-class("slideshow-inner")]
+@replace("crop=1xw:1xh;center,top&resize=(320|980):\\*", "resize=1280:*"): //img/@*[name(.) = "src" or name(.) = "srcset"]
+?true
+@replace("crop=1xw:1xh;center,top$", "resize=1280:*"): //img/@*[name(.) = "src" or name(.) = "srcset"]
+
+##
+
+<div>: $body//figure[not(.//img or .//video or .//iframe)]
+
+@set_attr(src, @data-src): //video
+@set_attr(src, @data-src): //iframe
+@set_attr(src, @data-src): //video//source
+
+@remove: $body/div[has-class("article-body-content")]/*[last()][self::hr]
+
+image_url: $meta[@name="twitter:image" or @property="twitter:image" or @name="og:image" or @property="og:image"]/@content[normalize-space()][1]
+image_url: $cover//img[not(starts-with(@src, "data:"))]/@src
+image_url: $body//img[not(starts-with(@src, "data:"))]/@src
+
+@set_attr(data-href, @href): $body//div[has-class("fb-post")]
+
+## <snippet "imghref">
+# lowercase
+@replace("\\.png(?>\\?.*|)(?>#.*|)$", ".png", "i"): //a[.//img]/@href
+@replace("\\.jpg(?>\\?.*|)(?>#.*|)$", ".jpg", "i"): //a[.//img]/@href
+@replace("\\.jpeg(?>\\?.*|)(?>#.*|)$", ".jpeg", "i"): //a[.//img]/@href
+@replace("\\.gif(?>\\?.*|)(?>#.*|)$", ".gif", "i"): //a[.//img]/@href
+# image links
+@set_attr(href, "./ancestor::a/@href"): //a[(not(contains(@href, "wikipedia")) and not(contains(@href, "gettyimages"))) and not(ends-with(@href, ".png") or ends-with(@href, ".jpg") or ends-with(@href, ".jpeg") or ends-with(@href, ".gif"))]//img
+
+## <snippet end>
+
+## <snippet "letmedie">
+?true
+
+$problems: $body
+@while( $problems ) {
+  $test: $body//*[self::*[has-class("fb-post")] or self::blockquote or self::aside or self::figure[not(./ancestor::slideshow)] or self::img[not(./ancestor::figure)] or self::iframe[not(./ancestor::figure)] or self::slideshow or self::video[not(./ancestor::figure)] or self::audio[not(./ancestor::figure)] or self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)]]
+
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote[not(has-class("instagram-media"))] or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br or ancestor::ul or ancestor::ol or ancestor::li]
+
+  @split_parent: $problems
+}
+## <snippet end>
