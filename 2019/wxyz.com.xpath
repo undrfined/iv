@@ -1,0 +1,276 @@
+~version: "2.1"
+
+?domain: .*abc15.com
+site_name: "ABC15 Arizona"
+?domain: .*wxyz.com
+site_name: "ABC7 WXYZ Detroit"
+?true
+
+##s d3 31
+##s rochelle 30
+
+article: //article[@itemprop="mainEntity"]
+article: //section[has-class("galleryContent")]
+
+@inline: $article//div[has-class("Page-intro") and has-class("Gallery")]/comment()
+
+header: $article/div[has-class("article-top-contain")]
+header: $article/header
+header: $article
+body: $article/div[has-class("left-column")]
+body: $article/div[has-class("articleWrap")]
+body: $article
+title: $header//h1[@itemprop="headline"]
+subtitle: $header//div[@itemprop="alternativeHeadline"]
+##do d3
+@datetime(0, en, "hh:mm a MMM dd y"): $header/div[has-class("published")]/text()
+published_date: $@
+##
+published_date: //meta[@property="article:published_time" or @itemprop="datePublished"]/@content
+author: $article//div[@itemprop="author"]//div[@itemprop="name" or has-class("brandSpotlight")]
+@remove: $author/*[1 and self::span]
+@replace("([^\\s]+)\\s+?(,)", "$1$2"): $author
+
+<figure>: $body//div[has-class("VideoLead")]
+<figcaption>: $body//div[has-class("VideoLead-headline")]
+
+@wrap_inner(<i>): $body//figcaption[not(ancestor::figure or ancestor::slideshow)]
+
+@combine: $body//figure[has-class("video")]/next-sibling::figure[count(*) = 2 and script and figcaption]
+
+@remove: $body//div[has-class("Page-actions")]
+@remove: $body//div[has-class("Page-intro") and has-class("Gallery")]
+@remove: $body//div[@id="rightBar"]
+@remove: $body//div[has-class("ScrippsGallerySlider")]
+@remove: $body[has-class("galleryContent")]//header
+
+@replace("CLICK TO ENLARGE - ", ""): //figcaption/text()
+
+<figure>: $body//iframe[has-class("giphy-embed")]/ancestor::*[count(.//*) = 1 and parent::div[has-class("RichTextArticleBody-body")]]
+<cite>: $@/next-sibling::*[starts-with(normalize-space(.), "via GIPHY")]
+@append_to("./prev-sibling::figure"): $@
+@wrap(<figcaption>)
+
+<div>: $body//div[has-class("photo-box")]/ul
+
+<slideshow>: $body//div[has-class("Wheel")]
+$ss: $@
+<figure>: $ss//div[has-class("WheelItem-wheelItems")]
+$sf: $@
+<figure>: $body//li[has-class("Gallery")]
+$sf+: $@
+
+
+$sfi: $sf/img
+@append(@data-caption): $sfi # REPLACE
+@html_to_dom: $@
+@wrap(<figcaption>): $@
+
+@append_to("./ancestor::figure"): $@
+@after(<figcaption>): $sfi[not(./ancestor::figure//figcaption)]
+@append(@data-credit): $sfi[@data-credit]
+@html_to_dom: $@
+@wrap(<cite>): $@
+$cite: $@
+##cdo
+#@prepend("Photo by: "): $cite
+##?
+@append(<br>): $cite
+##
+@append_to("./ancestor::figure//figcaption"): $cite
+@append(<cite>): $sfi/ancestor::figure//figcaption[not(.//cite)]
+
+
+@append(@data-copyright): $sfi[@data-copyright]
+@html_to_dom: $@
+##cdo
+# @wrap(<em>): $@
+##?
+@wrap(<span>): $@
+##
+@prepend_to("./ancestor::figure//figcaption/cite"): $@
+@after(<br>): $@ #$@[./../text()]
+
+##do rochelle
+# @replace("^_+$", "<hr>"): //p[not(./*)]/text()
+# @html_to_dom: $@
+##
+
+<figcaption>: $body//figure[not(.//figcaption)]/em
+
+
+$sfv: $sf/div[has-class("WheelItemVideo")]
+@append(@data-caption): $sfv
+@html_to_dom: $@
+@wrap(<figcaption>): $@
+@append_to("./ancestor::figure"): $@
+@after(<figcaption>): $sfv[not(./ancestor::figure//figcaption)]
+@append(@data-copyright): $sfv
+@html_to_dom: $@
+@wrap(<cite>): $@
+@append_to("./ancestor::figure//figcaption"): $@
+
+@after(<br>): //blockquote//p
+
+@remove: $ss/div[has-class("carousel-container")]
+
+
+<video>: $body//div[has-class("WheelItemVideo")]
+@set_attr(src, @data-m3u8): $@
+@set_attr(src, @data-mp4)
+
+<video>: $body//div[has-class("ScrippsHTML5VideoPlayer")]
+@set_attr(src, @data-m3u8): $@
+@set_attr(src, @data-mp4)
+##do d3
+@wrap(<figure>)
+@append(<figcaption>): $@
+@set_attr(data-caption, "./ancestor::figure/video/@data-caption"): $@
+@append(@data-caption)
+##
+
+cover: $body/div[has-class("ArticlePage-lead") or has-class("Page-lead")][count(.//figure)]//figure[not(.//video) or .//video[not(./ancestor::slideshow)]]
+##do d3
+cover: $body/div[has-class("ArticlePage-lead") or has-class("Page-lead")][count(.//figure) = 0 and count(.//video) = 1]//video
+##
+
+<unsupported>: $body//script[contains(@src, "embed-prod.vemba.io")]
+<unsupported>: $body//div[has-class("vdb_player")]
+<unsupported>: $body//script[contains(@src, "infogr.am/js/embed.js")]
+<unsupported>: $body//script[contains(@src, "infogram")]
+##cdo d3
+#<unsupported>: $body//script[contains(., "Infogram")]
+##
+# <unsupported>: $body//script[contains(@src, "turner.com")]
+<unsupported>: $body//div[has-class("inform-embed")]
+<unsupported>: $body//script[contains(., "woobox-sdk")]
+<unsupported>: $body//script[contains(@src, "list.ly/plugin")]
+<unsupported>: $body//script[contains(., "pikto-embed-js")]
+<unsupported>: $body//script[contains(@src, "embed.reddit")]
+<unsupported>: $body//script[contains(@src, "documentcloud.org")]
+<unsupported>: $body//script[contains(., "scribblelive")]
+<unsupported>: $body//div[starts-with(@id, "qp_main")]
+<unsupported>: $body//div[starts-with(@id, "kaltura_player")]
+<unsupported>: $body//script[contains(@src, "contenttools.co")]
+<unsupported>: $body//script[contains(@src, "scribblelive.com")]
+<unsupported>: $body//script[contains(., "trends.embed")]
+<unsupported>: $body//script[contains(., "redditstatic.com/comment-embed")]
+<unsupported>: $body//a[@data-flickr-embed]
+<unsupported>: $body//iframe[@src="about:blank"]
+<unsupported>: $body//script[contains(@src, "amazon-adsystem.com/widgets")]
+# <unsupported>: $body//script[contains(@src, "feed.mikle.com")]
+<unsupported>: $body//img[has-class("alwaysThinglink")]
+<unsupported>: $body//script[@data-plotly]
+<unsupported>: $body//script[contains(@src, "wistia.com")]
+<unsupported>: $body//script[contains(@src, "tagboard.com")]
+<unsupported>: $body//script[contains(@src, "foxbusiness")]
+<unsupported>: $body//div[@data-cnnvansinglewidget]
+<unsupported>: $body//div[has-class("pb_feed")]
+<unsupported>: $body//script[contains(., "video.motowndigital.com") or contains(@src, "video.motowndigital.com")]
+##cdo d3
+# <unsupported>: $body//script[contains(@src, "polldaddy")]
+##?
+<div>: $body//noscript
+##
+<unsupported>: $body//div[has-class("scrippsVideoEmbed")]
+
+
+<related>: $body//div[@id="sm-related-links"]
+@remove: $body//hr[next-sibling::related]
+
+@unsupported: $body//div[has-class("Page-pagination")]/a[has-class("Link")]
+
+<aside>: $body//figure[has-class("pullquote")]
+
+@set_attr(src, "https://www.gofundme.com/mvc.php?route=widgets/mediawidget&fund=", @id, "&image=", @image, "&coinfo=", @coinfo): $body//iframe[has-class("gfm-media-widget")]
+
+@append_to("./prev-sibling::figure[not(figcaption)]"): $body//figure/next-sibling::figcaption
+
+
+@before(<good>): /html/body
+<magic_vr>: $body//img[has-class("ado-visible-landscape")]/..
+$magic_vr: $@
+@remove: $magic_vr/img
+
+@replace(".*document.getElementById\\(\"(.*?)\"\\).setAttribute\\(\"src\", \"(.*?)\".*", "<moveto did=\"$1\">$2</moveto>"): $body//script[contains(., "vroptimal-3dx-assets.com")]
+@html_to_dom: $@
+$doms: $@
+@append_to(/html/good): $doms/moveto[@did=./ancestor::html/body//iframe/@id]
+@append_to("./ancestor::html/body//iframe[@id=(/html/good/moveto/@did)[1]]"): $@
+@remove: $doms
+
+@set_attr(src, "./moveto"): $magic_vr/iframe
+
+@remove: $body//div[has-class("copyright") or has-class("ArticlePage-below")]
+@remove: //noscript
+
+$frame: $body//iframe[contains(@src, "follow_button") or contains(@src, "like.php")]
+@remove: $frame/ancestor::p/prev-sibling::*[starts-with(normalize-space(.), "Like us") or starts-with(normalize-space(.), "Follow us")]
+@remove: $frame
+
+@unsupported: $body//unsupported
+
+<blockquote>: $body//iframe[contains(@src, "let-joe-know")]
+@append(<a>, href, @src): $@
+@append("NEED MY HELP? LET JOE KNOW"): $@
+
+<iframe>: $body//script[contains(@src, "secondstreetapp.com") and @data-opguid]
+$secondstreet: $@
+@match("(.*?\\.secondstreetapp\\.com)", 1): $secondstreet/@src
+@set_attr(src, @src, "\\/embed/", @data-opguid): $secondstreet
+
+?true
+
+<iframe>: $body//video[has-class("video-js") and @data-player]
+@set_attr(src, "https://players.brightcove.net/", @data-account, "\\/", @data-player, "_default/index.html?videoId=", @data-playlist-id): $@
+
+@unsupported: $body//div[has-class("playbuzz")]
+
+@remove: $body//div[has-class("article-action") or has-class("headline-wrap") or has-class("published") or has-class("last-updated") or has-class("ArticlePage-byline")]
+
+# <p>: $body//div[has-class("RichTextArticleBody-body")]/div[not(@class or @id or .//h5 or .//h6 or .//h4 or .//h3 or .//h2 or .//h1)]
+<p>: $body//div[has-class("RichTextArticleBody-body")]/div[not(@class or @id or .//h5 or .//h6 or .//h4 or .//h3 or .//h2 or .//h1 or .//p)]
+@replace("^\\s+$", " "): $body//p[not(*)]/text()
+
+<pic>: $body//img[@width < 100 or @height < 100]
+
+@before(<iframe>, \
+  src, ".//a[starts-with(@href, \"http://twitter.com/\") or starts-with(@href, \"https://twitter.com/\")][contains(@href, \"/status/\") or contains(@href, \"/statuses/\")]/@href", \
+  class, "twitter-tweet" \
+): $body//blockquote[has-class("twitter-tweet")]
+@remove
+
+## <snippet "imghref">
+# lowercase
+@replace("\\.png(?>\\?.*|)(?>#.*|)$", ".png", "i"): //a[.//img]/@href
+@replace("\\.jpg(?>\\?.*|)(?>#.*|)$", ".jpg", "i"): //a[.//img]/@href
+@replace("\\.jpeg(?>\\?.*|)(?>#.*|)$", ".jpeg", "i"): //a[.//img]/@href
+@replace("\\.gif(?>\\?.*|)(?>#.*|)$", ".gif", "i"): //a[.//img]/@href
+# image links
+@set_attr(href, "./ancestor::a/@href"): //a[(not(contains(@href, "wikipedia")) and not(contains(@href, "gettyimages"))) and not(ends-with(@href, ".png") or ends-with(@href, ".jpg") or ends-with(@href, ".jpeg") or ends-with(@href, ".gif"))]//img
+
+## <snippet end>
+## <snippet "letmedie">
+?true
+
+$problems: $body
+@while( $problems ) {
+  $test: $body//*[self::*[has-class("fb-post")] or self::blockquote or self::aside or self::figure[not(./ancestor::slideshow)] or self::img[not(./ancestor::figure)] or self::iframe[not(./ancestor::figure)] or self::slideshow or self::video[not(./ancestor::figure)] or self::audio[not(./ancestor::figure)] or self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)]]
+
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote[not(has-class("instagram-media"))] or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br or ancestor::ul or ancestor::ol or ancestor::li]
+
+  @split_parent: $problems
+}
+## <snippet end>
+
+
+?path: /*heroesforhope.*
+?path: /*news/*region-southeast-valley/*mesa/*tesy-test-test.*
+?path: /*live.*
+
+body!!: null
+
+?exists: $header/div[has-class("last-updated") and not(./../div[has-class("published")])]
+?exists: $body//div[has-class("schedule-heading")]
+
+body!!: null
