@@ -1,0 +1,42 @@
+~version: "2.1"
+
+body: //article[@itemtype="http://schema.org/Article"]/div[@itemprop="articleBody"]
+title: //h1[@itemprop="headline"]
+
+published_date: //meta[@itemprop="datePublished"]/@content
+author: //meta[@itemprop="author"][not(contains(@content,"sdelaysam-svoimirukami.ru"))]/@content
+
+@set_attr("src",./../@href): //a/img
+<pic>: //img[has-class("emoji")]
+
+<related>: //div[has-class("rels")]
+@append_to($body)
+
+<p>: //br[./following-sibling::node()[1]/self::br]
+
+#Downloads are only available for logged users
+@unsupported: //*[contains(text(),"Внимание! У Вас нет прав для просмотра скрытого текста.")]
+
+#Original code/idea by Misho @mushi_f
+#With modifications by Andrei Afanasiev
+
+$problems: $body
+@while( $problems ) {
+  $test: $body//*[self::blockquote or self::aside or self::figure or (self::img and not(./ancestor::figure)) or self::iframe or self::slideshow or self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)]]
+ 
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br]
+ 
+  @if( $problems ) {
+    $parent: $problems/parent::*
+    @detach: $parent/node()
+    @set_attr("merge", $index): $@
+    <remove>: $parent
+    @after_el("./parent::*"): $problems
+    @combine: $body//self::*[prev-sibling::*/@merge = @merge]
+  }
+}
+#====================
+
+site_name: "Сделай сам своими руками"
+#image_url: //meta[@itemprop="image"]/@content
+#image_url: $body//img[1]/@src
