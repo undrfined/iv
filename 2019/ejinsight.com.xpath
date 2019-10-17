@@ -1,0 +1,168 @@
+~version: "2.1"
+?path_not: /
+#!path_not: /categoria/.*
+#!path_not: /tag/.*
+#!path_not: /page/.*
+#!path_not: /author/.*
+#!path_not: /videos/.*
+#!path_not: /rss-feeds/.*
+#!path_not: /cc/.*
+#!path_not: /contato/.*
+#!path_not: /top-stories-iframe/.*
+#!path_not: /newsletter-signup/.*
+#!path_not: /pollsarchive/.*
+#!path_not: /random/.*
+#!path_not: /politica-de-privacidade/.*
+#!path_not: /blog/.*
+#!path_not: /\?s=.*
+#?path_not: /ntvlive/.+
+#!path_not: /sparklive/.+
+$main: //div[@id="main"]/div[has-class("post")]/div[@id="primary"]
+$title: $main//div[@id="post-page-title"]/h1
+#@htmldecode: $title
+title: $title
+
+@remove: //meta[@property="article:author"]
+$author_: $main//span[has-class("bypostauthor")]//a[@rel="author"]
+author: $author_
+
+#@datetime(0, "en-US", "cccc MMMM d, yyyy"): $main//div[@class="date-posted"]//p
+#$pub_date: $@
+#@datetime(0, "en-US", "cccc MMMM d, yyyy"): $main//h6
+#$pub_date?: $@
+
+published_date: $main//meta[@itemprop="datePublished"]/@content
+
+####description: $main//meta[@itemprop="description"]/@content[normalize-space()]
+#image_url: $meta[@name="og:image"]/@content[normalize-space()]
+####site_name: $main//meta[@itemprop="name"]/@content
+
+#$setsrc: $main//img[@srcset]
+#@set_attr(src_set, @srcset): 
+#@debug: $setsrc/@src_set
+#@replace("http.+w, ", ""): $setsrc/@src_set
+#@debug: $setsrc/@src_set
+#@replace("(jpe?g|png|gif).+w", "$1"): $setsrc/@src_set
+#@debug: $setsrc/@src_set
+#@set_attr(src, @src_set): $setsrc
+
+#@map( $main//img[@srcset] ) {
+#  $cur: $@
+#  @append(<div>): //head
+#  $box: $@
+#  @while( $cur[string-length(@srcset)>0] ) {
+#    @clone: $cur
+#    $src: $@
+#    @append_to($box): $src
+#    
+#    @set_attr(src, @srcset): $src
+#    @match(".+?\\s"): $src/@src
+#    @match("(?:\\s|^).+?\\s+?(\\d+)w(,|$)", 1): $src/@srcset
+#    @match(".+?,(.+)", 1): $cur/@srcset
+#  }
+#  @set_attr(src, $box/img[not(../img/@srcset>@srcset)]/@src): $cur
+#}
+#$picsai: $main//a[contains(@href,"https://hypescience.com/wp-content/uploads") and not(contains(@href, "/pan-"))]/img
+
+#$picsai: $main//a[contains(@href,"https://hypescience.com/wp-content/uploads") and not(contains(@href, "/pan-"))]/img[(contains(@src, "-[0-9]{3,4}x[0-9]{3,4}.jpg") and  contains(./../@href, substring-before(@src, "-[0-9]{3,4}x[0-9]{3,4}.jpg"))) or contains(@src, substring-before(./../@href, ".jpg"))]
+
+#@debug: $picsai
+#@set_attr(src, ./../@href): $picsai
+
+###$picsa: $main//a/img
+###@before_el("./../self::a"): $picsa
+#@replace("-[0-9]+x[0-9]+.jpg$", ".jpg"): $picsa/@src
+
+#@if($main//a/img){
+##  $aimg: $main//a[contains(@href,"https://hypescience.com/wp-content/uploads")]/img #$@
+##  <img>: $aimg/../self::a
+##  $imgimg
+##  @debug: $imgimg
+##  @remove: $imgimg/img
+##  @set_attr(src, @href): $imgimg
+##  @set_attr(href, ""): $imgimg
+##  @debug: $imgimg
+#}
+
+###$picsp: $main//p//img
+###@before_el("./../self::p"): $picsp
+
+<figure>: $main//div[@id="media-wrapper"]
+<figcaption>: $main//figure/div[@id="caption"]
+#<figcaption>: $main//div[./prev-sibling::figure]
+#@append_to( $main//figure): ../next-sibling::figcaption
+#@debug: $main//figcaption 
+#@map( $main//figure ) {
+# $current_fig: $@
+## @append_to($current_fig): ./next-sibling::figcaption
+#@debug: $@
+#}
+
+###$figuresp: $main//p//figure
+###@before_el("./../self::p"): $figuresp
+
+
+#@debug: $main
+##@if( $main//ul/li/a ) {
+##<related>: $@/..
+##}
+#@before_el("./../self::ul"): $rela
+
+###$iframep: $main//p//iframe
+###@after_el("./../self::p"): $iframep
+#@replace("//www.youtube.com/embed/", "https://www.youtube.com/watch?v="): $main//iframe/@src
+#@debug: $main//iframe
+
+#<aside>: $main//p[@align="center"]
+
+#$gfycat: $main//iframe[contains(@src, "gfycat.com/ifr")]
+#@debug: $gfycat
+#@replace("(gfycat\\.com)\/ifr\/(.+)", "thumbs.gfycat.com/$2-mobile.mp4"): $gfycat/@src
+#@set_attr(loop, "loop"): $gfycat
+#<video>: $gfycat
+
+#@unsupported: $main//iframe[contains(@src, "hypescience.com")]
+#@remove: $main//iframe[contains(@src, "hypescience.com")]
+#@unsupported: $main//iframe[contains(@src, ".swf")]
+#@unsupported: $main//iframe[contains(@src, "gfycat.com")]
+#@unsupported: $main//embed[@type="application/x-shockwave-flash"]
+#@unsupported: $main//input #[@type="application/x-shockwave-flash"]
+#@remove: $main//iframe[contains(@src, "nationalgeographic.com")]
+
+
+#@debug: $main//img
+cover: $main//figure[./img[has-class("wp-post-image")]]# and not(contains(@src, ".gif"))]
+####image_url: $main//img/@src
+
+@remove: $main//div[has-class("post-info")]
+@remove: $main//div[@id="post_by_tags"]
+@remove: $main//div[has-class("addthis_toolbox")]
+@remove: $main//div[@id="author-info"]
+#@remove: $main//div[has-class("banner")]/next-sibling::hr
+
+@set_attr(href, "mailto:", ./text()): $main//a[@href="0"]
+
+?not_exists: $main//input
+!not_exists: $main//button
+$body: $main
+
+#=====LET ME DIE=====
+#Original code/idea by Misho @mushi_f
+#With modifications by Andrei Afanasiev
+
+$problems: $body
+@while( $problems ) {
+  $test: $body//*[self::blockquote or self::aside or self::figure or self::video or self::audio or (self::img and not(./ancestor::figure)) or self::iframe or self::slideshow or self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)]]
+ 
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br]
+ 
+  @if( $problems ) {
+    $parent: $problems/parent::*
+    @detach: $parent/node()
+    @set_attr("merge", $index): $@
+    <remove>: $parent
+    @after_el("./parent::*"): $problems
+    @combine: $body//self::*[prev-sibling::*/@merge = @merge]
+  }
+}
+#====================
