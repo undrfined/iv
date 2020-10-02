@@ -1,0 +1,111 @@
+~version: "2.1"
+site_name: "Кафа"
+channel: "@kafanews_com"
+
+@before_el("/html"): //td[@id="news-body"]
+body
+
+title: $body//h1
+
+@remove: //div[has-class("ntags")]
+@remove: //div[has-class("nrating-holder")]
+@remove: //div[has-class("news-by-theme")]
+@remove: //div[has-class("likes")]
+@remove: //div[has-class("comments-box")]
+@remove: //a[@name="comments"]
+@remove: //script
+@remove: //style
+
+
+# date TODO: handle previous years better based on image urls
+$d: $body//div[has-class("ndate-holder")]
+@before_el("./prev-sibling::span"): $d/span[has-class("ndate")]
+@combine(" "): $d/*
+@replace("сегодня", "today", "i"): $d
+@replace("вчера", "yesterday", "i")
+@replace("\\s+", " ", "m")
+@replace("^\\s*", "")
+@replace("^(\\d{2}).(\\d{2})", "$2/$1")
+@replace("$", " 0 years ago"): $d[not(contains(., "today") or contains(., "yesterday"))]
+@datetime(+3): $d
+published_date: $@
+@remove: $d
+
+# authors
+$a: $body//div[has-class("authors")]
+author: $a/a
+@if( $a[count(a)=1] ) {
+  author_url: $a/a/@href
+}
+@remove: $a
+author: ""
+
+# images and links
+## higher-res
+@set_attr(src, "./ancestor::a/@href"): //img[ancestor::a[contains(@href, ".jpg") or contains(@href, ".jpeg") or contains(@href, ".png") or contains(@href, ".JPG") or contains(@href, ".gif")]]
+@set_attr(id, "./ancestor::a/@id")
+$i
+@while( $i ) {
+ @split_parent
+  $i: //img[ancestor::a[contains(@href, ".jpg") or contains(@href, ".jpeg") or contains(@href, ".png") or contains(@href, ".JPG") or contains(@href, ".gif")]]
+}
+## others
+@set_attr(href, "./ancestor::a/@href"): //img[ancestor::a]
+@while( //img[ancestor::a] ) {
+ @split_parent
+}
+
+
+# captions
+<figure>: //div[has-class("timg")]
+@wrap(<figcaption>): $@/p
+@remove: //figure/a
+
+
+# gallery
+<slideshow>: //div[has-class("media-box")]
+
+
+# don't use slideshow where not necessary, use cover instead
+# id is not unique...
+<div>: //slideshow[count(.//img)<2]
+cover: $body//figure[img[@id="news-media-img-main"] and not(ancestor::slideshow)]
+
+# preview image
+image_url: $cover//img/@src
+image_url: $body//img/@src
+
+# sources
+$sources: $body/div[1][descendant-or-self::*[starts-with(., "Источники")]]
+@append_to($body)
+<footer>
+
+# fix empty paragrphs
+@replace("^\\s$", ""): //p[count(*)=0 and count(node())=1]
+
+# improve sponsored articles
+$tag_image: $title/img
+$tag: $tag_image/@title
+kicker: $tag 
+@remove: $tag_image
+# title!: $body//h1
+
+# styles
+@style_to_attrs("font-weight", font-weight): //*
+@wrap_inner(<b>): $@[@font-weight="bold"]
+
+# remove last promo paragraph
+$last_para: ($body//p)[last()] 
+@remove: $last_para[starts-with(., "Подписывайтесь на Кафу")]
+
+
+# fix nesting
+?true
+$problems: $body
+@while( $problems ) {
+  $test: $body//*[self::audio or self::video or self::blockquote or self::aside or self::figure or (self::img and not(./ancestor::figure)) or self::iframe or self::slideshow or  self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)]]
+ 
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br]
+ 
+  @split_parent: $problems
+}

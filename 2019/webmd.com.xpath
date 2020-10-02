@@ -1,0 +1,530 @@
+~version: "2.1" 
+site_name: "WebMD"
+
+?path: /.+
+body: //div[@itemprop="articleBody"]
+body: //div[has-class("articleBody")]
+body: //div[has-class("article-body")]
+body: //article[has-class("article")]
+body: //div[has-class("drug-monograph-container")]
+body: //div[starts-with(@class, "drug-submonograph-")]
+
+?path: /.+/slideshow-.+
+body: //main//div[@id="main-container"]
+body: //div[@id="chrome"]
+
+?path: /.+/video/.+
+!exists: //main//div[@itemtype="http://schema.org/VideoObject"]
+body: //main//div[@itemtype="http://schema.org/VideoObject"]/ancestor::div[starts-with(@id, "ContentPane")]
+@debug: $body
+
+?path: /.+.htm
+body!!: null
+
+# title
+?exists: //div[starts-with(@class, "drug-submonograph-")]
+  title: ($body//h3)[1]
+?true
+title: $body//h1
+title: //h1
+subtitle: //p[@class="subhead"]
+
+# author
+## set url only if one author
+@if( //div[has-class("byline")]//span[has-class("authors")][count(./a)=1] ) {
+  author: $$/a
+  author_url: $$/@href
+}
+## older version
+@combine(", "): //div[has-class("byline")]//span[has-class("authors")]/span/next-sibling::span
+author: //div[has-class("byline")]//span[has-class("authors")]/span
+author 
+## most basic version
+@replace("^by", "", "i"): //div[has-class("byline")]//span[has-class("authors")]
+author 
+# blog page
+author: //div[@class="blog-author-info"]/a
+author_url: $$/@href
+## maybe article starts with byline
+@if_not( $author ) {
+  @clone: ($body//p)[1]
+  $a: $@
+  @match("^by (.+)$", 1, "i"): $@[not(contains(., "Reviewed") or contains(., "reviewed")) and string-length(.)<120 and not(contains(.,"."))]
+  author: $@
+  @remove: $a 
+  @if( $author ) {
+    @remove: ($body//p)[1]    
+  }
+}
+## paginated
+@if_not( $author ) {
+  @clone:  //div[@class="byline"]/p[@class="auth"]
+  $m: $@
+  @remove: $m//span[@class="reviewed"]
+  @replace("^by ", "", "i"): $m
+  @replace(",\\s*$", ""): $m
+  author: $m
+  @remove: $m
+}
+## give up
+author: ""
+
+
+# date
+## wiki-like, so opting for modified
+@datetime: //meta[@itemprop="dateModified"]/@content
+published_date: $@
+@if_not( $published_date[.>0] ) {
+  @datetime: //meta[@itemprop="datePublished"]/@content
+  published_date: $@
+}
+## if no date is set, get it directly from text
+@if_not( $published_date[.>0] ) {
+  @clone: ($body//p[string-length(.)>1])[1]
+  $date: $@
+  @match("^([^-]+) --", 1): $date
+  @datetime: $@
+  published_date!: $@
+  @remove: $date
+}
+## or maybe para 2?
+@if_not( $published_date[.>0] ) {
+  @clone: ($body//p[string-length(.)>1])[2]
+  $date: $@
+  @match("^([^-]+) --", 1): $date
+  @datetime: $@
+  published_date!: $@
+  @remove: $date
+}
+## try extracting from scripts
+@if_not( $published_date[.>0] ) {
+  @clone: //script
+  $date: $@
+  @match(".datePublished.: \"([^\"]+)\"", 1): $date
+  @datetime: $@
+  published_date!: $@
+  @remove: $date
+}
+## paginated
+@if_not( $published_date[.>0] ) {
+  @clone:  (//div[@class="byline"]//span[@class="reviewed"])[last()]
+  $m: $@
+  @replace("^\\s*on ", "", "i"): $m
+  @datetime
+  published_date!: $@
+  @remove: $m
+}
+##video
+?path: /.+/video/.+
+@if_not( $published_date[.>0] ) {
+  @datetime: $body//meta[@itemprop="uploadDate"]/@content
+  @debug: $@
+  published_date!: $@
+}
+?true
+
+
+# cover
+cover: //header[has-class("header-interactive-article")]//img
+cover: //header[has-class("blog-header")]//img
+<div>: //aside[has-class("hero")]
+cover: $@//img
+
+?path_not: /.+/slideshow-.+
+!exists: //header[has-class("header-interactive-article")]
+  @if_not( $cover ) {
+    @before(<img>, src, @content): /html/head/meta[@property="og:image" and contains(@content, "x350")]
+    cover: $@
+  }
+  
+  
+?true
+
+# before anything else, inline the rest of the article
+$pages: (//div[@class="pagination"])/ul[@class="pages"]
+@if_not( $pages/li[1]/a ) {
+  @map( $pages/li ) {
+    $page: $@
+    
+    @before(<iframe>, src, @href): $page/a
+    @inline: $@
+    $i: $@
+    @append_to($body): ($i//div[has-class("article-content")])[1]
+    @if( $last ) {
+      @append_to($body): ($i//footer[has-class("article-footer")])[1]
+    }
+    
+    @remove: $i
+  }
+  @remove: //div[@class="pagination"]
+  
+  ## fix footer in the middle of the article
+  # TODO: look at it again
+  @after_el(($body//footer)[last()]): ($body//footer)[1]
+}
+
+# remove extra content
+@remove: //div[has-class("breadcrumb")]
+@remove: //div[has-class("touch-instructions")]
+@remove: //div[has-class("slide-count")]
+@remove: //div[@class="slide redirect"]
+@remove: //div[has-class("controls")]
+@remove: //*[has-class("copyright")]
+@if( //span[@class="review long"] ) {
+  @remove: //span[@class="review short"]
+}
+@remove: //div[@class="lastslide-tiles"]
+@remove: //*[has-class("continue-reading")]
+@remove: //div[has-class("drug-review-lowest")]
+@remove: //*[has-class("drug-review")]
+@remove: //a[has-class("drug-accordion")]
+@remove: //*[has-class("rx-lowest-price")]
+@remove: //ul[starts-with(@class, "drug-tabs")]
+@remove: //div[has-class("read-more")]
+@remove: //div[has-class("tab-navigation")]
+@remove: //div[has-class("healthSolutions")]
+@remove: //div[has-class("up-next-container")]
+@remove: //a[has-class("show-more")]
+@remove: //a[has-class("show-less")]
+@remove: //div[@class="transcript-video"]
+@remove: //div[@class="module-slider__footer"]
+
+#==================================================
+# images with links in them
+@before(<img>, src, @href): //a[img][contains(@href, ".jpg") or contains(@href, ".jpeg") or contains(@href, ".png") or contains(@href, ".JPG")]
+@remove: $$/img
+@before(<img>, src, "./img/@src", href, @href): //a[img]
+@remove: $$/img
+
+# div paragraphs with images
+$i: $body//img/ancestor::p
+$i+: $body//img/ancestor::h1
+$i+: $body//img/ancestor::h2
+$i+: $body//img/ancestor::h3
+$i+: $body//img/ancestor::h4
+$i+: $body//img/ancestor::h5
+$i+: $body//img/ancestor::h6
+<div>: $i
+<span>: $body//img/ancestor::em
+<span>: $body//img/ancestor::i
+<span>: $body//img/ancestor::strong
+<span>: $body//img/ancestor::b
+
+# div paragraphs with iframes
+$i: $body//iframe/ancestor::p
+$i+: $body//iframe/ancestor::h1
+$i+: $body//iframe/ancestor::h2
+$i+: $body//iframe/ancestor::h3
+$i+: $body//iframe/ancestor::h4
+$i+: $body//iframe/ancestor::h5
+$i+: $body//iframe/ancestor::h6
+$i+: $body//iframe/ancestor::aside
+<div>: $i
+<span>: $body//iframe/ancestor::em
+<span>: $body//iframe/ancestor::i
+<span>: $body//iframe/ancestor::strong
+<span>: $body//iframe/ancestor::b
+
+# empry paras
+@remove: $body//p[string-length(.)<2][count(./*)=0]
+
+# small images to pics
+<pic>: $body//img[@height<=150]
+#==================================================
+
+# some fixes
+@before(" "): //a[.="Read More"]
+
+# attempt to find small images
+@set_attr(guessed-size, @src): $body//img
+@match("\\?resize=(\\d+):*", 1): $$/@guessed-size
+<pic>: //img[@guessed-size<250 and @guessed-size>0]
+@set_attr(width, @guessed-size): $@
+## fix source
+@replace("\\r\\n", ""): //pic/@src
+<div>: //pic/ancestor::figure
+
+# guess a bio page
+## try 1
+@clone: $body//pic
+<temp>: $@
+@match("/biographies/"): $@/@src
+@if( $@ ) {
+  description!: $body//p
+  image_url: //pic[@width>300]/@src
+  image_url: ""
+}
+## try 2
+$publication: $body//*[@class="publication" and .="WebMD Biography"]
+@if( $publication ) {
+  description!: $body//p
+  image_url: ""
+}
+@remove: //temp
+
+
+# random layout fixes
+@after(<br>): //span[@itemprop="publisher" or @class="publication"]
+?exists: //div[has-class("drug-submonograph-sideeffects")]
+  ## remove hr
+  @remove: //hr
+  @wrap_inner(<mark>): //p[starts-with(@class, "subheader")]
+  @wrap_inner(<b>): //p[starts-with(@class, "subheader-severe")]
+?true
+
+# sources collapsed
+<details>: $body//span[@class="sources"]
+@after_el("./ancestor::footer")
+<summary>: $@//h4
+## another display
+@before(<hr>): (//div[@class="sources-left"]/p)[1]
+@remove
+
+## another formatting
+<details>: //div[has-class("sources") and ./div[@id="source_container"]]
+$s: $@
+<summary>: $@/*[has-class("source_intro")]
+<span>: $@//a
+@after_el("./ancestor::footer"): $s
+
+
+# related
+@if_not( $body//related ) {
+  @append_to($body): (//aside[@role="complementary"][.//header//h3 and .//header//h4])[1]
+  <related>: $@
+}
+@if_not( $body//related ) {
+  @append_to($body): (//aside[@role="complementary"])[1]
+  <related>: $@
+  $r: $@
+  @remove: //related[.//h3="Today on WebMD"]
+  @remove: //related[.//h3="Top Picks"]
+  @remove: //related//h3[.="further reading"]
+#   @remove: $r//header  
+  <h2>: $r//header/h3
+  <span>: $@//a
+}
+## drugs
+<related>: //div[has-class("monograph-related-links")]
+$r
+@remove: $r//h2
+@remove: $r//h3
+## slideshow
+<related>: //ul[has-class("seo-nav")] 
+$relnav: $@
+@prepend_to($@): $@/preceding::h6[has-class("category")]
+<h2>: $@
+<span>: $@//a
+@append_to($body): $relnav
+### fix kicker
+?path_not: /a-to-z-guides/.+
+@if_not( $relnav ) {
+    kicker: //section[has-class("breadcrumb")]/h6[has-class("category") and .//a]
+  }
+  @if( $relnav ) {
+    @clone: $relnav//h2
+    kicker: $@
+  }
+?true
+### fix header
+@prepend_to($relnav): //h3[has-class("wbmd-moreabout-title")]
+@if( $relnav ) {
+  @set_attr(class, "better-title"): //h3[has-class("wbmd-moreabout-title")]
+}
+@if( $relnav//h3[@class="better-title"] ) {
+  @remove: $relnav//*[@class="category"]
+}
+@remove: //*[starts-with(@class, "wbmd-moreabout-")]
+## limit no of related items to 5
+@append_to("./ancestor::related"): //a
+@remove: //related//a[position()>5]
+## if 2 sections go one after another, remove the last
+@while( (//related)[last()][./prev-sibling::related] ) {
+  @remove: $@
+}
+
+# sources
+@wrap(<details>): //div[has-class("source-content")]
+$sources: $@
+@prepend(<summary>): $@
+@append("Sources"): $@
+
+# review
+@wrap(<footer>): //div[@class="review-content"]
+@before_el($sources): $@
+
+# disclaimer
+<details>: //div[has-class("sources-right")]
+<summary>: $@//p[@class="disclaimer"]
+@remove: //a[@class="disclaimer-toggle"]
+
+
+# scripted images
+@clone: $body//div[starts-with(@id, "ia-image-")]/next-sibling::script
+$scripts: $@
+@map( $scripts ) {
+  $script: $@
+  
+  @clone: $script 
+  @match("url: '([^']+)'", 1): $@
+  $url: $@
+  
+  @clone: $script 
+  @match("description: '(.*)'", 1): $@
+  @replace("\\\\'", "'")
+  @html_to_dom
+  $caption: $$/text()
+  
+  @before(<img>): $script 
+  @set_attr(src, $url): $@
+  @wrap(<figure>)
+  @append(<figcaption>): $@
+  @append_to($@): $caption
+  
+  @remove: $url
+}
+@remove: $scripts
+
+
+# same deal for slideshow
+@clone: $body//div[starts-with(@id, "ia-slideshow-")]/next-sibling::script
+$scripts: $@
+@map( $scripts ) {
+  $script: $@
+  # NOTE: unclear if anything can be done, probably not
+}
+@remove: $scripts
+
+# and pullquotes
+@clone: $body//div[starts-with(@id, "pull-quote-")]/next-sibling::script
+$scripts: $@
+@map( $scripts ) {
+  $script: $@
+  
+  @clone: $script 
+  @match("text: '([^']+)'", 1): $@
+  @replace("\\\\'", "'")
+  @html_to_dom
+  $text: $$/text()
+  @debug
+  
+  @clone: $script 
+  @match("credit: '(.*)'", 1): $@
+  @replace("\\\\'", "'")
+  @html_to_dom
+  $credit: $$/text()
+  @debug
+
+  @before(<aside>): $script 
+  $q: $@
+  @append_to($q): $text
+  @debug: $@
+  @append_to($q): $credit
+  @wrap(<cite>): $@
+}
+@remove: $scripts
+
+
+# mark video as unsupported only if it leads the article
+$first_section: ($body//section)[1]
+@unsupported: $first_section/*[1]/self::div[starts-with(@id, "ia-video-")]
+# @unsupported: $body//div[starts-with(@id, "ia-video-")]
+
+# videos that are actually supported
+$v: //embeded_module[./div[@itemtype="http://schema.org/VideoObject"]]
+$v?: $body/div[@itemtype="http://schema.org/VideoObject"]
+@append(<video>, src, ".//meta[@itemprop=\"contentURL\"]/@content"): $v
+@append(<figcaption>): $v
+@append_to($@): $v//meta[@itemprop="description"]/@content
+@append(@content): $v/figcaption
+<figure>: $v
+
+# recover anchor links
+@before(<anchor>, name, @id): //h1[@id]|//h2[@id]|//h3[@id]|//h4[@id]
+
+# improve pagination
+<div>: //ul[has-class("pages")]
+$pages: $@
+@prepend("Pages: "): $pages
+<span>: $pages//li
+
+@before(<footer>): ($body//footer)[1]
+@if_not( $body//footer ) {
+  @append(<footer>): $body
+}
+@prepend_to(($body//footer)[1]): //div[has-class("byline")]/p[./span[has-class("reviewed")]]
+
+# drug images
+@before("Images"): //div[has-class("drug-image-index")]
+@wrap(<h2>): $@
+$image_header: $@
+# this will matter in next section!
+
+# convert drugs to <details>
+## warning
+<details>: //div[has-class("drug-warnings-container")]
+$d: $@
+@prepend(<summary>): $d 
+@prepend("Warnings"): $@
+@wrap_inner(<b>)
+@wrap_inner(<mark>)
+@remove: $d//span[.="WARNINGS: "]
+## other sections
+<details>: //div[starts-with(@id, "tab-")]
+$sec: $@
+@prepend(<summary>): $sec
+@clone: $sec//h2
+@prepend_to("./ancestor::details/summary"): $@
+### first open
+@set_attr(open, true): ($sec)[1]
+### better description
+description: ($$[./summary="Uses"]//p)[1]
+## fix related
+@after_el("./ancestor::details"): //related
+## fix summary title
+@remove: (//details//div[@class="inner-content"])/*[1]/self::h2[.=./ancestor::details/summary]
+
+# drug images
+$d: //div[has-class("drug-image-index")]
+@remove: //img[@alt="icon"]
+@remove: //div[has-class("drug-image-large")]
+@remove: //div[has-class("description-mobile")]
+@remove: $d//hr
+<pic>: $d//img
+@set_attr(height, 216)
+@wrap_inner(<b>): $d//div[has-class("description")]
+<span>: $d//dt
+@append(": ")
+@wrap_inner(<b>)
+<span>: $d//dd
+@after(<br>): $@
+<div>: $d//dl
+@after(<br>): $@
+## set image for preview
+# ?path: /drugs/.+
+#   $fi: ($body//pic)[1]
+#   image_url: $fi/@src
+# ?true
+@remove: $image_header
+
+# in acrticle navigation
+$ian: //aside[has-class("in-article-nav")]
+## first section with header
+$fs: ($body//section[./h2[@id]])[1]
+@before_el($fs): $ian
+@debug
+@remove: $ian//h4
+@after(" "): $ian//h3/span
+<div>: $ian
+
+# references
+<summary>: //div[@class="view-reference" and ./next-sibling::div[@class="references"]]
+<details>: $$/next-sibling::div[@class="references"]
+@prepend_to($@): $@/prev-sibling::summary
+
+# blockquotes WebMD Voices
+$f: //figure[./blockquote]
+<cite>: $f//figcaption
+<div>: $f/blockquote
+<aside>: $f
+@after(<hr>): //details[./summary[@class="disclaimer"] and ./following::h3[.="WebMD Voices"]]
