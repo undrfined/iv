@@ -1,0 +1,64 @@
+~version: "2.1"
+site_name: "НУ «ЛП»"
+?path: /news/.+
+?path: /event/.+
+title: //h1[has-class("page-header")]
+body: //div[has-class("field-name-body")]
+cover: //div[has-class("field-name-field-illustration")]//img
+
+author: //div[has-class("field-name-field-author-news")]//div[has-class("field-item")]
+@match("^[^,]+")
+
+published_date: //div[has-class("news_date")]/span/@content
+
+#Slideshows
+<slideshow>: //*[@id="block-views-gallery-block"]//div[has-class("view-gallery")]
+@append_to($body)
+@append_to($$): //*[@id="block-views-gallery-block-1"]//a
+
+@set_attr("src",./../@href): //slideshow//a/img
+
+@append_to($body): //div[has-class("field-type-youtube")]
+@append_to($body): //div[has-class("field-name-field-more-details")]
+
+#Event tables
+$table: //section[@id="block-views-event-block-block"]//div[has-class("view-content")]/div
+@prepend_to($body): $table
+<table>: $table
+$table
+<pic>: $table//a[.//img]
+@set_attr("src",@href)
+<tr>: $table//div[has-class("views-field")]
+@wrap(<td>): $table//*[has-class("views-label")]
+@wrap(<td>): $table//*[has-class("field-content")]
+
+@set_attr("colspan", 2): $table//td[.//pic] #bigger poster
+@set_attr("align", "center")
+
+@set_attr("colspan", 2): $table//tr[has-class("views-field-field-category")]/td #Категорія
+@set_attr("align", "center")
+<th>
+#Важливі, блять, дати, які захардкодили в ::after
+@append("<tr>"): $table
+@append("<td>"): $@
+@append("<b>"): $@
+@append("Важливі дати"): $@
+
+@append_to($table//tr[last()]): //div[has-class("view-opportunity-portal")]
+<td>
+
+@remove: $table//img
+
+@append_to($body): //div[has-class("field-name-field-attachments")]
+@remove: $@//img
+
+#=====NESTED=====
+$problems: $body
+@while( $problems ) {
+  $test: $body//*[self::blockquote or self::aside or self::figure or (self::img and not(./ancestor::figure)) or self::iframe or self::slideshow or self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)]]
+ 
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br]
+ 
+  @split_parent: $problems
+}
+
