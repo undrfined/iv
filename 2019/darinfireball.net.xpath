@@ -1,0 +1,68 @@
+~version: "2.1"
+site_name: "Daring Fireball"
+channel: "@daringfireball_net"
+
+?path: /[0-9]+/[0-9]+/.+
+?path: /linked/[0-9]+/[0-9]+/[0-9]+/.+
+?path: /thetalkshow/[0-9]+/[0-9]+/[0-9]+/.+
+?path: /feeds/sponsors/[0-9]+/[0-9]+/.+
+?path: /projects/.*
+#article
+body: //div[has-class("article")]
+title: $body/h1
+#linked
+body: //dl[has-class("linkedlist")]
+<h1>: $body/dt
+title: $@
+?path: /thetalkshow/.+
+kicker: $body/h1
+title!: $body/h2
+
+?true
+author: "John Gruber"
+
+?path_not: /projects/.*
+image_url: $body//img/@src
+image_url: "does_not_exist.jpg"
+
+?path: /thetalkshow/.*
+site_name!: "The Talk Show"
+
+?true
+#article
+$d: $body/h6[has-class("dateline")]
+#linked
+$d?: $body/dd/p[has-class("smallprint")]
+@match(", (.*)$", 1): $d
+@datetime: $@
+published_date: $@
+@remove: $d
+
+@before(<anchor>, name, @id): //*[starts-with(@id, "fn")]
+@combine(<br>, <br>): //blockquote/p/next-sibling::p
+# <footer>: //div[has-class("footnotes")]
+@remove: //div[@id="PreviousNext"]
+@before_el("./ancestor::p"): $body//audio
+@remove: $@
+@before_el("./ancestor::p"): $body//img
+@before_el("./ancestor::p"): $body//iframe
+
+?path: /projects/
+@wrap(<strong>): //dt/a
+
+?path: /linked/.+
+?path: /[0-9]+/[0-9]+/.+
+# better descroption
+@clone: $body
+$d: $@
+@remove: $d//h1
+@remove: $d//h2
+@remove: $d//footer
+@remove: $d//p[starts-with(., "Previously:")]/next-sibling::ul
+@remove: $d//p[starts-with(., "Previously:")]
+@combine(" "): $d/p/next-sibling::*[self::p or self::blockquote]
+@before(" "): $d//br
+description: ($d/*)[1]
+description: $d
+@replace("\\s+", " "): $description
+@replace("^(.{240}\\w*).*", "$1...")

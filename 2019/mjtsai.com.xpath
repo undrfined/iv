@@ -1,0 +1,81 @@
+~version: "2.1"
+site_name: "Michael Tsai"
+?path: /blog/[0-9]{4}/[0-9]{2}/[0-9]{2}/.*
+
+body: //div[has-class("post")]
+
+title: $body/h1
+
+author: "Michael Tsai"
+author_url: "https://twitter.com/mjtsai" #?
+channel:  "@mjtsai"
+
+$day: //div[@id="main"]/p/a[2]/@href
+@replace("/blog/", ""): $day
+@datetime: $day
+published_date: $@
+
+# remove extra stuff
+@remove: $body//div[has-class("feedback")]
+$comments: $body//h2
+@remove: $comments/following-sibling::*
+@remove: $comments
+
+# some formatting is not preserved within quotes
+$bq: //blockquote
+# nested blockquotes not supported
+@split_parent: $bq/blockquote/node()
+@remove: $bq/blockquote
+@remove: $bq/*[not(text())]
+@combine(<br>, <br>): $bq//*[self::p or self::div]/next-sibling::*[self::p or self::div]
+
+# convert related links
+$links: $body//a[starts-with(@href, "https://mjtsai.com/blog") and not(contains(@href, "/tag/")) and not(ancestor::h1)]
+# @urlencode: $links/@href
+@set_attr(href, "https://t.me/iv?rhash=63680257c7c1fe&url=", @href)
+
+# previously list
+<related>: //p[starts-with(., "Previously:")]/next-sibling::ul
+@prepend_to($@): $@/prev-sibling::p
+@wrap(<h4>): $@
+
+# previously
+<related>: //p[starts-with(., "Previously: ")]
+@prepend("Previously:"): $@
+@wrap(<h4>): $@
+
+# keep tags in footer
+$tags: $body//p[has-class("tags")]
+@prepend("Tags: ")
+@after(","): $tags//a/prev-sibling::a
+@wrap(<footer>): $tags
+
+# better descroption
+@clone: $body
+$d: $@
+@remove: $d//h1
+@remove: $d//footer
+@remove: $d//p[starts-with(., "Previously:")]/next-sibling::ul
+@remove: $d//p[starts-with(., "Previously:")]
+@combine(" "): $d/p/next-sibling::*[self::p or self::blockquote]
+@before(" "): $d//br
+description: ($d/p)[1]
+description: $d
+
+# images in a tags
+@set_attr(href, "./ancestor::a/@href"): $body//img
+$nested_images: $body//img[ancestor::a]
+@while ( $nested_images ) {
+  @split_parent: $nested_images
+  $nested_images: $body//img[ancestor::a]
+} 
+  
+# fixall
+?true
+$problems: $body
+@while( $problems ) {
+  $test: $body//*[self::*[has-class("fb-post")] or self::blockquote or self::aside or self::figure or self::img[not(./ancestor::figure)] or self::iframe[not(./ancestor::figure)] or self::script[@data-telegram-post] or self::slideshow[not(./ancestor::figure)] or self::video[not(./ancestor::figure)] or self::audio[not(./ancestor::figure)] or self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)]]
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote[not(contains(@class,"instagram"))] or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br or ancestor::ul or ancestor::ol or ancestor::li]
+  @split_parent: $problems
+}
+
