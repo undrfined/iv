@@ -1,0 +1,55 @@
+?path: /.+
+!path_not: /privacy-policy.
+!path_not: /contact.
+!path_not: /advertise.
+!path_not: /terms-of-service.
+!path_not: /resource-center.
+
+$main: //div[@id="inner-content"]
+$title:  $main//h1
+@inline: $title/comment()
+title: $title
+
+#@debug
+#@replace("<"," "): $title
+#<p>: $title
+#@debug
+
+author: $main//span[@class="entry-author author"]
+$body:  $main//section[has-class("entry-content")]
+#@remove: $main//img
+@remove: $main//ul[has-class("social-share")]
+@remove: //div[@id="small-player"]
+@remove: //div[@id="go-alexa-briefing-player"]
+@remove: //div[@id="ad-b-container"]
+#@remove: //span[@class="sales-headline"]
+@remove: //div[@class="marketing-posts"]
+@remove: //h3[contains(.,"Join Gigaom Research")]
+$cover:  //div[@class="featured-image"]//img
+$cover?:  //div[@class="inner-header"]//img
+@background_to_image: $main//span[@class="thumbnail"]
+$cover?:  $@
+$cover?:  $body//img[1]
+cover: $cover
+
+#@after_el($body//a//span[@class="logo"]//img): $body//aside[@class="sponsored-by "]//a
+
+#@detach: $body//aside[@class="sponsored-by "]//a//span[@class="logo"]/img
+#@debug
+#@after_el($body//aside[@class="sponsored-by "]//a): 
+#@remove: $body//a//span[@class="logo"]//img
+
+#@wrap(<p>): $body//a//span[@class="logo"]
+
+#@detach: $body//aside[@class="sponsored-by "]/a
+#@detach: $body//aside[@class="sponsored-by "]//a//span[@class="logo"]/img
+#@pre: $body//a//span[@class="logo"]
+#@debug
+body: $body
+description: $body//p
+
+$d: $main//time[@class="updated entry-time"]
+@replace("- ", ""):  $d
+
+published_date: $d
+
