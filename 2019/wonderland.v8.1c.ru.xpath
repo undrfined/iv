@@ -1,0 +1,42 @@
+~version: "2.0"
+
+?path: /blog/.+
+body: //div[has-class("body-blog")]
+title: $body//h1[1]
+
+published_date: //div[has-class("date")]/text()
+
+<sup>: //span[@style="font-size: 9pt;"]
+<b>: //blockquote//h3
+
+#Old articles have issues with images. Added this line from https://wonderland.v8.1c.ru/blog/variant-raboty-interfeysa-bez-ispolzovaniya-modalnykh-okon/
+@replace("http://v8.1c.ru", "https://i0.wp.com/v8.1c.ru"): //*[@src]/@src
+
+#REMOVING
+@remove: //div[has-class("date")]
+@remove: //div[has-class("blog-record__tools")]
+@remove: //*[has-class("tags")]
+@remove: //noscript
+
+image_url: $body//img[1]/@src
+site_name: "Заметки из Зазеркалья"
+
+# Original code/idea by Misho @mushi_f
+# With modifications by Andrei Afanasiev
+
+$problems: $body
+@while( $problems ) {
+  $test: $body//*[self::video or self::blockquote or self::aside or self::figure or (self::img and not(./ancestor::figure)) or self::iframe or self::slideshow or self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)]]
+ 
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br]
+ 
+  @if( $problems ) {
+    $parent: $problems/parent::*
+    @detach: $parent/node()
+    @set_attr("merge", $index): $@
+    <remove>: $parent
+    @after_el("./parent::*"): $problems
+    @combine: $body//self::*[prev-sibling::*/@merge = @merge]
+  }
+}
+# ====================
