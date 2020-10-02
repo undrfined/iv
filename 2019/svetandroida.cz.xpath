@@ -1,0 +1,232 @@
+~version: "2.0"
+
+### base {
+
+?exists: //article[@id="post-detail__article"]
+
+title: //article[@id="post-detail__article"]//h1
+body: //article[@id="post-detail__article"]
+
+@set_attr(src, @data-src): //img[@data-src]
+cover: //span[has-class("post-detail__img__link")]//img
+
+author: //li[has-class("single-meta__author__item")]/a
+author_url: //li[has-class("single-meta__author__item")]/a/@href
+
+### }
+### unsupported {
+@unsupported: //div[has-class("um-login")]
+#@unsupported: //table[@class="sat_table_begin"]
+
+@if("//object[contains(@data, \"youtube\")]") {
+  @before(<iframe>): //object[contains(@data, \"youtube\")]
+  @replace("http://www.youtube.com/v/","https://www.youtube.com/embed/"): //object[contains(@data, "youtube")]/@data
+  @set_attr(src, "./next-sibling::object[contains(@data, \"youtube\")]/@data"): //iframe[next-sibling::object[contains(@data, "youtube")]]
+  @remove: //object[contains(@data, "youtube")]
+}
+
+@if("//object[contains(@data, \"vimeo\")]") {
+  @before(<iframe>): //object[contains(@data, "vimeo")]
+  @replace("http://vimeo.com/moogaloop.swf\\?clip_id=","https://player.vimeo.com/video/"): //object[contains(@data, "vimeo")]/@data
+  @replace("&.+",""): //object[contains(@data, "vimeo")]/@data
+  @set_attr(src, "./next-sibling::object[contains(@data, \"vimeo\")]/@data"): //iframe[next-sibling::object[contains(@data, "vimeo")]]
+  @remove: //object[contains(@data, "vimeo")]
+}
+
+### }
+### quotes {
+
+@before(<hr>): //div[has-class("box")]
+@after(<hr>): //div[has-class("box")]
+#@wrap(<b>): $@//h3
+@wrap(<blockquote>): //div[has-class("cite")]
+#@before(<br>): //blockquote/p[next-sibling::* or prev-sibling::*]
+@after(<br>): //blockquote/*[not(self::br)][next-sibling::*[not(li)]]
+<cite>: //div[has-class("cite_author")]
+
+### }
+### WP-Appbox {
+
+@wrap(<h2>): //div[has-class("apptitle_sz")]
+@map(//div[has-class("wpappbox_sz")]) {
+  @prepend_to($@): $@//h2
+}
+
+@map(//div[has-class("appicon_sz")]//img) {
+  <pic>: $@
+  @set_attr(href, $@/../@href): $@
+}
+
+@set_attrs(width, 80, height, 80): //div[has-class("appicon_sz")]//pic
+
+@wrap(<figure>): //div[has-class("appicon_sz")]//pic
+@wrap(<figcaption>): //div[has-class("developer_sz")]/a
+@map(//div[has-class("wpappbox_sz")]) {
+  @append_to($@/div/a/figure): $@/div/div/figcaption
+}
+
+@remove: //span[has-class("appbuttons_sz__title")]
+@before_el(./..): //div[has-class("price_sz")]/span
+@before_el(./..): //div/span
+
+### }
+### links {
+
+@map("//a[descendant::img][contains(@href, \"jpg\") or contains(@href, \"jpeg\")  or contains(@href, \"png\")]") {
+  @set_attr(src, $@/@href): $@//img
+}
+
+@map("//a[descendant::img][not(contains(@href, \"jpg\") or contains(@href, \"jpeg\")  or contains(@href, \"png\"))]") {
+  @set_attr(href, $@/@href): $@//img
+}
+
+#@urldecode: //img[contains(@src, "%")]/@src
+
+### }
+### slideshow {
+
+<figure>: //div[has-class("wp-caption")]
+@wrap(<figcaption>): $@/text()
+
+@wrap(<figure>): //dl[has-class("gallery-item")]
+@replace_tag(<figcaption>): //dl[has-class("gallery-item")]/dd
+@replace_tag(<slideshow>): //div[has-class("gallery")]
+
+@wrap(<figure>): //div[has-class("swiper-wrapper")]/a/span/img 
+@replace_tag(<slideshow>): //div[has-class("gallery-full__wrap")]
+
+@wrap(<figure>): //p//img
+@wrap(<slideshow>): //p[descendant::img]
+
+@map(//figure) {
+ @append_to("$@/ancestor::slideshow"): $@
+}
+
+@map(//div[has-class("catalog_meta-left")][next-sibling::div[has-class("catalog_meta-right")]]/ul) {
+  @append_to($@): $@/../next-sibling::div[has-class("catalog_meta-right")]/ul/li
+}
+
+### }
+### video {
+
+<iframe>: //div[has-class("video__wrap")]
+@map(//iframe[has-class("video__wrap")]) {
+ @set_attr(src, "https://www.youtube.com/embed/", $@/div[has-class("youtube__video")]/@data-id): $@
+}
+
+### }
+### related {
+@remove: //div[has-class("feed_wrap")]
+
+@wrap(<related>): //a[has-class("post-list__link")]
+<related>: //div[has-class("swiper-wrapper")]//div[has-class("week-topic__item")]
+@append_to($body): //related 
+@append_to($@): //h2[has-class("week-topic__title")]
+
+### }
+
+@if( "//img/ancestor::table[not(descendant::table)][not(ancestor::table)]" ) {
+   <slideshow>: $@
+   @append_to("./prev-sibling::slideshow[1]"): //next-sibling::figure[1]
+   @prepend_to("./next-sibling::slideshow[1]"): //prev-sibling::figure[1]
+}
+
+### general remove {
+
+@remove: //related//img
+@remove: //div[has-class("post-detail__header")]
+@remove: //div[has-class("sidebar__big__wrap")]
+@remove: //div[has-class("post-detail__footer__meta")]
+@remove: //span[has-class("vhide")]
+@remove: //span[has-class("gallery-full__arrow__text")]
+@remove: //div[has-class("week-topic__item__meta__wrap")]
+@remove: //header[has-class("header")]
+@remove: //div[has-class("catalog_rating")]
+@remove: //div[has-class("swiper-wrapper")]//div[has-class("week-topic__item")]
+@remove: //div[has-class("single-ad-post")]
+@remove: //div[has-class("single-ad")]
+@remove: //noscript
+@remove: //script
+
+### }
+### errors {
+
+@before_el(./..): //aside//img
+@before_el(./..): //aside//img
+@before_el(./..): //aside//img
+@before_el(./..): //h1//img
+@before_el(./..): //h2//img
+@before_el(./..): //h3//img
+@before_el(./..): //h4//img
+@before_el(./..): //h5//img
+@before_el(./..): //h6//img
+
+<div>: //table[ancestor::slideshow]
+<div>: //td[.//img][ancestor::slideshow]
+<div>: //tr[.//img][ancestor::slideshow]
+<div>: //tbody[.//img][ancestor::slideshow]
+<div>: //figure[.//related]
+
+<div>: //p[.//blockquote]
+<div>: //p[.//aside]
+
+<div>: //slideshow[.//iframe]
+<div>: //a[.//iframe]
+<div>: //b[.//iframe]
+@wrap(<b>): $@/text()
+<div>: //i[.//iframe]
+@wrap(<i>): $@/text()
+<div>: //p[.//iframe]
+<div>: //em[.//iframe]
+@wrap(<em>): $@/text()
+<div>: //strong[.//iframe]
+@wrap(<strong>): $@/text()
+<div>: //h1[.//iframe]
+@wrap(<h1>): $@/text()
+<div>: //h2[.//iframe]
+@wrap(<h2>): $@/text()
+<div>: //h3[.//iframe]
+@wrap(<h3>): $@/text()
+<div>: //h4[.//iframe]
+@wrap(<h4>): $@/text()
+<div>: //h5[.//iframe]
+@wrap(<h5>): $@/text()
+<div>: //h6[.//iframe]
+@wrap(<h6>): $@/text()
+
+
+<div>: //a[.//img]
+<div>: //b[.//img]
+@wrap(<b>): $@/text()
+<div>: //i[.//img]
+@wrap(<i>): $@/text()
+<div>: //p[.//img]
+<div>: //em[.//img]
+@wrap(<em>): $@/text()
+<div>: //strong[.//img]
+@wrap(<strong>): $@/text()
+<div>: //h1[.//img]
+@wrap(<h1>): $@/text()
+<div>: //h2[.//img]
+@wrap(<h2>): $@/text()
+<div>: //h3[.//img]
+@wrap(<h3>): $@/text()
+<div>: //h4[.//img]
+@wrap(<h4>): $@/text()
+<div>: //h5[.//img]
+@wrap(<h5>): $@/text()
+<div>: //h6[.//img]
+@wrap(<h6>): $@/text()
+
+<pic>: //img[ancestor::blockquote]
+@before(<br>): $@
+
+@wrap(<b>): //blockquote//h1
+@wrap(<b>): //blockquote//h2
+@wrap(<b>): //blockquote//h3
+@wrap(<b>): //blockquote//h4
+@wrap(<b>): //blockquote//h5
+@wrap(<b>): //blockquote//h6
+
+
+### }

@@ -1,0 +1,42 @@
+~version: "2.0"
+
+title: //header//h1 
+body: //div[@class="article__container"]
+
+site_name: "Dale Albo"
+<h6>: //div[@class="news-excerpt"]/p
+description: $@
+
+cover: $body//div[@class="cover-image"]/ancestor::figure
+
+author: //div[@class="news-line news-author-content"]/p/span[next-sibling::time]
+author: //div[@class="news-line news-author-content"]/p/a
+author_url: //div[@class="news-line news-author-content"]/p/a/@href
+
+@replace(" hs", ""): //div[@class="news-line news-author-content"]/p/time/@datetime
+@replace("T", " "): $@
+@datetime(-3, "es_LA", "yyyy-dd-MM HH:mm"): $@
+published_date: $@
+
+<related>: //section[@class="mod mod-list"]
+<related>: //div[@class="ck-related-news"]
+@prepend(<h4>): $@
+@append("Ver también"): $@
+<a>: //related[@class="ck-related-news"]/span
+@set_attr(href, @data-src): $@
+
+#@unsupported: //div[@class="iframe-match-live"]
+@unsupported: //div[@class="brid"][@itemprop="video"]
+
+@remove: //div[@class="news-line news-author-content"]
+@remove: //section[@class="mod mod-lomasvisto"]
+@remove: //header//div[@class="news-line"]
+@remove: //section[@class="mod mod-tags"]
+@remove: //section[@class="mod mod-comments"]
+@remove: //div[@class="mod poll-box-home"]
+
+@replace("^\\s+$", ""): //p/text()
+@replace("^\\s+$", ""): //div/text()
+
+<div>: //p[.//iframe]
+@wrap(<p>): $@/text()

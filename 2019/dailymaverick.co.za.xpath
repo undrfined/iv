@@ -1,0 +1,83 @@
+~version: "2.0"
+
+?exists: //div[has-class("article-container")]
+?exists: //div[has-class("body-text")]
+?path: .+cartoon.+
+
+title: //h1
+title: //meta[@property="og:title"]
+
+body: //div[has-class("article-container")]
+body: //div[has-class("body-text")]
+body: //div[has-class("img-wrapper")]
+
+published_date: //meta[@name="published"]/@content
+author_url: //a[@class="follow"]/@href
+
+@if_not(//div[has-class("opionista-bio")]) {
+ @if(//div[@class="articleheader"]) {
+  @background_to_image: $@
+  cover: $@
+ }
+ @if_not(//img[has-class("header-image")]) {
+ 
+  @match("(?<=background-image:\\surl\\(\\')(.+)(?=\\')"): /html/body/style[2]
+  <imgsrc>: $@
+  @append(<img>, src, $@/text()): $@
+  @wrap(<figure>): $@
+  bg: $@
+
+  @wrap(<figcaption>): //div[has-class("visible-xs")]//div[has-class("caption-popover")]/text()[1]
+  @append_to($bg): //div[has-class("visible-xs")]//div[has-class("caption-popover")]/figcaption
+
+  cover: $bg
+}
+
+ @if(//div[has-class("articleheader-small")]) {
+
+  @remove: //p[has-class("image-caption")]/a
+  @remove: //p[has-class("image-caption")]/i
+
+  <figcaption>: //p[has-class("image-caption")]
+  @replace("[\n\r]",""): //figcaption[has-class("image-caption")]
+  @replace("  ",""): //figcaption[has-class("image-caption")]
+  hc: //figcaption[has-class("image-caption")]
+  @wrap(<figure>): //div[has-class("articleheader-small")]//img
+  bg: $@
+  @append_to($bg): $hc
+
+  cover: $bg
+ }
+}
+
+<blockquote>: //p[contains(@style, "padding-left")]
+@combine(<br>, <br>): //blockquote/next-sibling::blockquote
+
+<related>: //p[contains(text(),"Read more")]/next-sibling::ul
+@remove: //p[contains(text(),"Read more")]
+
+<related>: //p/span[contains(text(),"Read more")]/../next-sibling::ul
+@remove: //p/span[contains(text(),"Read more")]
+
+<related>: //p/em[contains(text(),"Read more")]/../next-sibling::ul
+@remove: //p/em[contains(text(),"Read more")]
+
+<related>: //p/strong[contains(text(),"Read more")]/../next-sibling::ul
+@remove: //p/strong[contains(text(),"Read more")]
+
+@append_to($body): //related
+
+@remove://a[contains(@href, "subscribe")]
+@remove: //a[contains(href, "/subscribe/subscribe")]
+@remove: //div[has-class("follow-author")]
+@remove: //div[has-class("save-for-later")]
+@remove: //img[has-class("lightgallery-icon")]
+@remove: //a[has-class("post-article-cta")]
+@remove: //div[has-class("author-bio")]
+@remove: //hr
+@remove: //div[has-class("opionista-bio")]
+@remove: //div[has-class("article-tags")]
+
+<div>: //p//img/ancestor::p
+<div>: //b//img/ancestor::b
+<div>: //p//iframe/ancestor::p

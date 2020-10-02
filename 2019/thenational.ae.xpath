@@ -1,0 +1,94 @@
+~version: "2.1"
+
+site_name: "The National"
+
+body: //div[has-class("article-container")]
+title: //h1[@class="article-title"]
+subtitle: //div[has-class("lead-text")]
+
+author: //div[@class="author-name-block"]/a
+
+published_date: $body//p[@class="published-date"]/text()
+
+@replace("^\\s+$", " "): //text()
+
+@map("//a[.//img][not(contains(@href, \".jpg\") or contains(@href, \".jpeg\") or contains(@href, \".png\") or contains(@href, \".gif\") or contains(@href, \".JPG\") or contains(@href, \".JPEG\") or contains(@href, \".PNG\") or contains(@href, \".GIF\"))]") {
+  @set_attr(href, $@/@href): $@//img
+}
+
+@set_attrs(src,@data-src,srcset,@data-srcset): //img
+
+@set_attr(src, "./parent::a/@data-baseurl"): //a[@data-baseurl]/img
+
+@map (" //a[@data-caption] ") {
+  <figure>: $@
+  $fig: $@
+  @html_to_dom: $fig/@data-caption
+  @append_to("$fig"): $@
+  <figcaption>: $@
+}
+
+<slideshow>: //div[has-class("element-gallery")]
+<div>: //figure[has-class("article-image")][.//slideshow]
+@remove: $@/next-sibling::noscript
+
+@if ( "//meta[@property=\"og:url\"][contains(@content,\"/cartoon/\")]" ) {
+  description!!: //div[has-class("article-image-info")]//figure//figcaption//text()
+}
+@if_not ( "//meta[@property=\"og:url\"][contains(@content,\"/cartoon/\")]" ) {
+  cover: //div[has-class("article-image-info")]//figure[not(ancestor::slideshow)]
+}
+
+<details>: //div[has-class("story-highlights")]
+<summary>: ($@//*[has-class("factbox-heading")])[1]
+@wrap_inner(<b>)
+@set_attr(open,""): //details
+@remove: (//details)[last()]
+
+@after(<br>): //blockquote//p
+<cite>: //p[contains(@class,"blockquote-name")]
+# <aside>: //blockquote[has-class("national-blockquote")]
+
+<hr>: //*[starts-with(text(),"___")]
+<hr>: $@/ancestor::p
+
+<audio>: //iframe[contains(@src,"embeds.audioboom")]
+@replace("embeds.(.+)(\/embed.+)", "$1.mp3"): $@/@src
+
+<related>: //div[@class="simplebox"]
+@append_to($body): //related
+@combine: //related/next-sibling::related
+
+@remove: //*[self::iframe or self::img][@width=1]
+@remove: //div[has-class("article-author")]
+@remove: //div[has-class("article-sharing")]
+@remove: //div[has-class("article-share-widget")]
+@remove: //div[has-class("most-read-article")]
+@remove: //div[has-class("editor-pick")]
+@remove: //hr[next-sibling::div[.//p[@class="last-updated"]]]
+@remove: //p[@class="last-updated"]
+
+# ====================
+$problems: $body
+@while( $problems ) {
+  $test: $body//*[self::blockquote or self::aside or self::figure or (self::img and not(./ancestor::figure)) or (self::iframe and not(./ancestor::figure)) or (self::video and not(./ancestor::figure)) or self::slideshow or self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)] or self::script[@data-telegram-post]]
+ 
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote[not(contains(@class,"twi") or contains(@class,"instagram") or contains(@class,"fb-"))] or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br]
+ 
+ @split_parent: $problems
+}
+# ====================
+
+#https://www.thenational.ae/world/asia/indian-elections-2019-schedule-polls-dates-and-everything-you-need-to-know-about-the-vote-1.845503
+@unsupported: //div[@class="flourish-embed"]
+@unsupported: //div[@class="apester-media"]
+@unsupported: //form
+@unsupported: //div[@class="playbuzz"]
+@unsupported: //div[contains(@class, "Poll")]
+@unsupported: //a[@class="embedly-card"]
+<div>: //blockquote[contains(@class,"reddit")]
+<unsupported>: //script[contains(@src,"polldaddy") or contains(@src,"vidible") or contains(@src,"stackcommerce") or contains(@src,"complex.com") or contains(@src,"tumblr") or contains(@src,"whistleout")]
+@unsupported: //unsupported
+  
+  ?not_exists: $published_date
+body!!: null

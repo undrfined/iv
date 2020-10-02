@@ -1,0 +1,56 @@
+~version: "2.1"
+
+channel: "@channel34ua"
+
+body: //div[has-class("news-wrapper")]
+title: //h1
+
+<div>: //p[@class="subtitle"]//strong
+subtitle:  //p[@class="subtitle"]
+
+@remove: //div[@class="top-tags"]
+@remove: //div[@class="news-tags"]
+@remove: //div[@class="news-statistics"]
+
+@replace("^\\s+$", " "): //text()
+
+@json_to_xml: /html//script[contains(text(),"datePublished")]
+@datetime(+2): //datePublished
+published_date: $@
+
+###
+@if_not( $published_date ) {
+  body!!: null
+}
+###
+
+<figure>: //div[has-class("news-photo")]
+<figcaption>: //div[has-class("photo-credits")]
+@wrap_inner(<cite>): $@
+
+cover: //figure[@class="news-photo  "]
+
+@after(<br>): //blockquote/p
+
+@map("//a[.//img][not(contains(@href, \"#\") or contains(@href, \"jpg\") or contains(@href, \"jpeg\")  or contains(@href, \"png\") or contains(@href, \"gif\"))]") {
+  @set_attr(href, $@/@href): $@//img
+}
+
+@map("//a[.//img][contains(@href, \"jpg\") or contains(@href, \"jpeg\")  or contains(@href, \"png\") or contains(@href, \"gif\")]") {
+  @set_attr(src, $@/@href): $@//img
+}
+
+<slideshow>: //div[has-class("fotorama")]
+
+<footer>: //div[@class="news-source"]
+
+# ====================
+$problems: $body
+@while( $problems ) {
+  $test: $body//*[self::blockquote or self::aside or self::figure or (self::img and not(./ancestor::figure)) or (self::iframe and not(./ancestor::figure)) or (self::video and not(./ancestor::figure)) or self::slideshow or self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)]]
+ 
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote[not(contains(@class,"twi") or contains(@class,"instagram") or contains(@class,"fb-"))] or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br]
+ 
+ @split_parent: $problems
+}
+# ====================

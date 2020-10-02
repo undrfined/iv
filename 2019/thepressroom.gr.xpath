@@ -1,0 +1,68 @@
+~version: "2.1"
+
+site_name: "The Pressroom"
+  
+  ?exists: //meta[@property="article:published_time"][@content]
+
+@unsupported: //div[has-class("live-coverage")]
+<unsupported>: //script[contains(@src,"ooyala") or contains(@src,"foxnews") or contains(@src,"playbuzz")]
+@unsupported: //unsupported
+
+body: //article
+title: //h1
+
+@replace("^\\s+$", " "): //text()
+<p>: //div[not(.//div)][not(@class) or @class="copy-paste-block"][not(@id)][.//text()]
+
+@append(<description>): //html
+$desc: $@
+@clone: ($body//p[normalize-space(.//text())])[1]
+@append_to($desc): $@
+@clone: ($body//p[normalize-space(.//text())])[2]
+@append_to($desc): $@
+@combine(" "): $desc//p/next-sibling::p
+description: $desc[normalize-space()]
+
+# Του, Της
+# + Διά, Μέσω ?
+@replace("^(\u03a4\u03bf\u03c5|\u03a4\u03b7\u03c2|\u0394\u03b9\u03ac \u039c\u03ad\u03c3\u03c9)", "", i): //div[has-class("field-reporters-name")]//text()
+author: //div[has-class("field-reporters-name")]//text()
+@remove
+
+@map("//a[.//img][not(contains(@href, \"#\") or contains(@href, \"jpg\") or contains(@href, \"jpeg\") or contains(@href, \"png\") or contains(@href, \"gif\"))]") {
+  @set_attr(href, $@/@href): $@//img
+}
+
+<figure>: //div[has-class("wp-caption")]
+<figcaption>: //p[has-class("wp-caption-text")]
+
+<slideshow>: //div[has-class("view-article-slideshow")]
+@wrap(<figure>): //slideshow[has-class("view-article-slideshow")][count(.//img) = 1]//img
+@combine(" "): //div[@class="images-source"]/*
+<figcaption>: //div[@class="images-source"]
+@wrap_inner(<cite>): $@
+@append_to("./preceding::figure[1]"): $$
+@append_to("./preceding::slideshow[not(.//figcaption)][1]"): $$
+
+cover: //slideshow[has-class("view-article-slideshow")][count(.//img) = 1]//figure
+image_url: //meta[@itemprop="image"]/@content
+image_url: //slideshow//img/@src
+
+@after(<br>): //blockquote//p
+
+@remove: //div[@class="info"]
+@remove: //div[has-class("field-tags")]
+@remove: //div[contains(@class, "social")]
+@remove: //img[@width=1]
+@remove: //iframe[@width=1]
+
+# ====================
+$problems: $body
+@while( $problems ) {
+  $test: $body//*[self::blockquote or self::aside or self::figure or (self::img and not(./ancestor::figure)) or (self::iframe and not(./ancestor::figure)) or (self::video and not(./ancestor::figure)) or (self::audio and not(./ancestor::figure)) or self::slideshow or self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)]]
+ 
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote[not(contains(@class,"twi") or contains(@class,"instagram") or contains(@class,"fb-"))] or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br]
+ 
+ @split_parent: $problems
+}
+# ====================

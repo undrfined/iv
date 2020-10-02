@@ -1,0 +1,82 @@
+~version: "2.1"
+
+site_name: "UAprom.info"
+channel: "@uaprom18"
+
+body: //article
+title: //h1
+
+@replace("^\\s+$"," "): //text()
+
+subtitle: $body//p[@class="lid"][normalize-space()][.//text()]
+subtitle: $body//p[following::div[@id="sociasl"]][normalize-space()][.//text()]
+
+description: $subtitle[normalize-space()]
+description: ($body//p[normalize-space()][.//text()])[1]
+
+published_date: //time[@itemprop="datePublished"]/@content
+
+@replace("Источник:\\s*",""): //p[@class="author"]//text()
+author: //p[@class="author"]
+
+@replace("small","big"): //img[contains(@src,"/expertise/")][contains(@src,"small")]/@src
+
+@map("//a[.//img][not(contains(@href, \"#\") or contains(@href, \"jpg\") or contains(@href, \"jpeg\") or contains(@href, \"png\") or contains(@href, \"gif\"))]") {
+  @set_attr(href, $@/@href): $@//img
+}
+
+@map("//a[.//img][contains(@href, \"#\") or contains(@href, \"jpg\") or contains(@href, \"jpeg\") or contains(@href, \"png\") or contains(@href, \"gif\")]") {
+  @set_attr(src, $@/@href): $@//img
+}
+
+<figure>: //div[@id="image_new"]
+cover
+
+<figcaption>: //span[@itemprop="author"]
+<figcaption>: //div[@id="job"]
+@combine: //figcaption/next-sibling::figcaption
+
+<figure>: //div[has-class("image-box")]
+<figcaption>: //div[has-class("image-box__caption")]
+
+<figure>: //div[has-class("picture")]
+<figcaption>: //div[has-class("info")]
+
+# @clone: //div[@id="author"]
+# $author_el: $@
+# author: $@/text()
+# @remove: $author_el
+
+<hr>: //p[starts-with(text(),"- - -")][normalize-space()]
+
+@after(<br>): //blockquote//p
+
+@wrap_inner(<i>): //p[contains(@style,"text-align:right")]
+
+<related>: //div[@id="po_teme"]
+@append_to($body)
+
+@remove: //h1[@itemprop="name"]//img
+@remove: //div[@id="sociasl"]
+@remove: //div[@id="new_info"]//time
+@remove: //div[@itemprop="author"]
+@remove: //div[@itemprop="aggregateRating"]
+@remove: //div[@id="htegs"]
+
+<div>: //p[count(.//br)>1]
+@wrap(<span>): $@//text()
+<p>: $body//br/next-sibling::br
+
+# ====================
+$problems: $body
+@while( $problems ) {
+  $test: $body//*[self::blockquote or self::aside or self::figure or (self::img and not(./ancestor::figure)) or (self::iframe and not(./ancestor::figure)) or (self::video and not(./ancestor::figure)) or self::slideshow or self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)] or self::script[@data-telegram-post]]
+ 
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote[not(contains(@class,"twi") or contains(@class,"instagram") or contains(@class,"fb-"))] or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br]
+ 
+ @split_parent: $problems
+}
+# ====================
+
+?not_exists: $published_date
+  body!!: null

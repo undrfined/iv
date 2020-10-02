@@ -1,0 +1,155 @@
+~version: "2.1"
+  
+site_name: "El Liberal"
+
+  ?exists: //div[contains(@id,"nota_")]
+  ?exists: //article[@class="nota"]
+ 
+body: //div[contains(@id,"nota_")]
+body: //article[@class="nota"]
+title: //h1
+subtitle: //p[has-class("z-post-excerpt")]
+subtitle: //p[has-class("baj")]
+kicker: //span[@class="ante"]
+@replace("#", ""): //span[has-class("breadcrumb-item")]/text()
+kicker: //span[has-class("breadcrumb-item")]/text()[string-length(.)>3]
+
+@replace("^\\s+$", " "): //text()
+
+# $date_el: ($body//p[normalize-space()][b][contains(text(),"-")])[1]
+# @datetime(0, "es-AR", "dd/MM/yyy"): $date_el/b[contains(text(),"/")]
+# $date: $@
+# @replace("Hoy", "0 years ago, "): $date_el/b[contains(text(),"Hoy")]/text()
+# @datetime(-3)
+# published_date: $@
+# published_date: $date
+# @remove: $date_el/b
+# @replace(" - ", ""): $date_el/text()
+
+$date_el: ($body//p[normalize-space()][time])[1]
+@datetime(0, "es-AR", "dd/MM/yyy"): $date_el/time
+published_date: $@
+@remove: $date_el
+
+@set_attr(src, @data-orig): //img[@data-orig]
+
+@map("//a[.//img][not(contains(@href, \".jpg\") or contains(@href, \".jpeg\") or contains(@href, \".png\") or contains(@href, \".gif\") or contains(@href, \".JPG\") or contains(@href, \".JPEG\") or contains(@href, \".PNG\") or contains(@href, \".GIF\"))]") {
+  @set_attr(href, $@/@href): $@//img
+}
+@map("//a[.//img][contains(@href, \".jpg\") or contains(@href, \".jpeg\") or contains(@href, \".png\") or contains(@href, \".gif\") or contains(@href, \".JPG\") or contains(@href, \".JPEG\") or contains(@href, \".PNG\") or contains(@href, \".GIF\")]") {
+  @set_attr(src, $@/@href): $@//img
+}
+
+@map( "//div[contains(@id, \"fot_\")]" ) {
+  $keydiv: $@
+  @replace("fot_(\\d+)_fot", "$1"): $keydiv/@id
+  @set_attr(key, "1 Jan 1970 ", @id, " second + ", 18, " second"): $keydiv
+  @datetime: $keydiv/@key
+  @prepend_to("$keydiv/img/@src"): $@
+  @replace("(\\d+)(\/u\/.+)f\\d+?x\\d+?-(\\d+)_\\d+", "$2f768x0-$3_$1"): $keydiv/img[contains(@src, "/f")]/@src
+}
+
+@after(<br>): //blockquote//p
+
+<related>: //p[cite[a]]
+<related>: //ul[@class="relacionadas"]
+@append_to($body)
+
+@remove: //related/prev-sibling::hr
+@remove: //related/next-sibling::hr
+# @append_to($body): //related
+@combine: //related/next-sibling::related
+@append_to("./ancestor::related"): //related//a
+@remove: //related//a[position() > 5]
+
+<p>: //div[not(@*)][not(.//div)][not(ancestor::*[self::figcaption or self::pre])][text()]
+<div>: //p[count(.//br)>1]
+@wrap(<span>): $body//text()[not(ancestor::*[self::script or self::style or self::figcaption])]
+<p>: $body//br/next-sibling::br
+
+@remove: //a[has-class("antesec")]
+@remove: //h3[contains(@style,"display:none")]
+@remove: //ul[@id="myTabs"]
+@remove: //div[@class="bannernota2"]
+@remove: //div[@class="ntsoc2"]
+@remove: //div[@itemprop="logo"]
+@remove: //div[@id="_mcePaste"]
+@remove: //div[@class="comentarios"]
+@remove: //div[has-class("z-single-post-sidebar")]
+@remove: //div[has-class("z-sp-related")]
+@remove: //div[@class="sponsor"]
+@remove: //h2[has-class("z-post-title")]
+@remove: //ul[@class="nav"]
+@remove: //nav
+@remove: //a[@class="carousel-control-prev"]
+@remove: //a[@class="carousel-control-next"]
+@remove: //hr[next-sibling::hr]
+@remove: //hr[not(following::*[normalize-space()][text()][ancestor::article])]
+@remove: //*[self::img or self::iframe][@width=1]
+@remove: //iframe[@src="about:blank"]
+@remove: //img[@src="" or not(@src) or contains(@src,".svg")]
+@remove: //svg
+@remove: //a[@name]
+@remove: //div[has-class("z-comments")]
+
+<img>: //iframe[contains(@src, "fbcdn")][contains(@src, ".jpg")]
+
+<slideshow>: //div[@role="tabpanel"][@id="fotos"]
+<figure>: $@//div[has-class("carousel-item")]
+<figcaption>: //div[@class="carousel-caption"]
+
+cover: //slideshow[@id="fotos"][count(.//img)=1]//figure
+$cover_src: $@//img/@src
+image_url: //meta[@property="og:image"]/@content[not(contains(.,"redes"))]
+@if( "//meta[@property=\"og:url\"][contains(@content, \"/galeria/\")]" ) {
+  image_url: $cover_src[normalize-space()]
+}
+
+image_url: $body//img/@src
+@append_to("./prev-sibling::figure"): //figcaption[prev-sibling::figure]
+
+description: $subtitle[normalize-space()]
+@if_not( $subtitle[normalize-space()] ) {
+  @append(<description>): //html
+  $desc: $@
+  @clone: ($body//p[normalize-space(.//text())])[1]
+  @append_to($desc): $@
+  @clone: ($body//p[normalize-space(.//text())])[2]
+  @append_to($desc): $@
+  @clone: ($body//p[normalize-space(.//text())])[3]
+  @append_to($desc): $@
+  @clone: ($body//p[normalize-space(.//text())])[4]
+  @append_to($desc): $@
+  @clone: ($body//p[normalize-space(.//text())])[5]
+  @append_to($desc): $@
+  @clone: ($body//p[normalize-space(.//text())])[6]
+  @append_to($desc): $@
+  @clone: ($body//p[normalize-space(.//text())])[7]
+  @append_to($desc): $@
+  @clone: ($body//p[normalize-space(.//text())])[8]
+  @append_to($desc): $@
+  @clone: ($body//p[normalize-space(.//text())])[9]
+  @append_to($desc): $@
+  @clone: ($body//p[normalize-space(.//text())])[10]
+  @append_to($desc): $@
+  @combine(" "): $desc//p/next-sibling::p
+  description: $desc[normalize-space()]
+}
+
+$problems: $body
+@while( $problems ) {
+  $test: $body//*[self::blockquote or self::aside or self::figure or (self::img and not(./ancestor::figure)) or (self::iframe and not(./ancestor::figure)) or (self::video and not(./ancestor::figure)) or (self::audio and not(./ancestor::figure)) or self::slideshow or self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)] or self::script[@data-telegram-post]]
+ 
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote[not(contains(@class,"twi") or contains(@class,"instagram") or contains(@class,"fb-"))] or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br]
+ 
+ @split_parent: $problems
+}
+
+@unsupported: //a[@id="btn_vermas"]
+@unsupported: //form
+@unsupported: //div[@class="playbuzz"]
+@unsupported: //div[contains(@class, "Poll")]
+@unsupported: //*[@class="embedly-card"]
+<div>: //blockquote[contains(@class,"reddit")]
+<unsupported>: //script[contains(@src,"polldaddy") or contains(@src,"vidible") or contains(@src,"stackcommerce") or contains(@src,"complex.com") or contains(@src,"tumblr") or contains(@src,"whistleout") or contains(@src,"storify") or contains(@src,"performgroup")]
+@unsupported: //unsupported

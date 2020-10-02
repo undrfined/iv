@@ -1,0 +1,54 @@
+~version: "2.0"
+
+?exists: //div[@id="comments"]
+
+@replace("^\\s+$",""): //article//p/text()
+body: //article
+title: $body//div[@class="article-title"]//a/text()
+
+site_name: "DefconRU"
+cover: //article//img[1]
+image_url: $@
+
+author: //li[@class="article-info-menu__item"]//span[@class="article-info-menu__name"]/text()
+author_url: //li[@class="article-info-menu__item"]/a/@href
+
+@replace("@", ""): //time[@class="entry-date"]
+@datetime(+3): $@
+published_date: $@
+
+@map("//a[descendant::img][not(contains(@href, \"defcon.ru\") or contains(@href, \"#\") or contains(@href, \"jpg\") or contains(@href, \"jpeg\")  or contains(@href, \"png\"))]") {
+  @set_attr(href, $@/@href): $@//img
+}
+
+@map("//a[descendant::img][contains(@href, \"jpg\") or contains(@href, \"jpeg\")  or contains(@href, \"png\")]") {
+  @set_attr(src, $@/@href): $@//img
+}
+
+@before(<br>): //blockquote/p[next-sibling::* or prev-sibling::*]
+
+<h6>: //span[@class="crayon-title"]
+@wrap(<i>): $@
+
+<pre>: //div[@class="crayon-plain-wrap"]/textarea
+@map("//pre[ancestor::div[has-class(\"crayon-syntax\")]]") {
+  @set_attr(data-language, "$@/ancestor::div[has-class(\"crayon-syntax\")]//span[@class=\"crayon-language\"]/text()"): $@
+}
+
+<summary>: //div[has-class("sp-head")]
+<details>: //div[has-class("sp-wrap")]
+@remove: $@//div[@class="spdiv"]
+@remove: //li[string-length(//text())<1]
+
+@remove: //span[@class="crayon-language"]
+@remove: //div[@class="crayon-main"]
+@remove: //time
+@remove: //nav
+@remove: //div[@class="article-info"]
+@remove: //span[@class="tag-links"]
+@remove: //div[@class="profile-info"]
+@remove: //div[@class="article-info"]//img
+
+<div>: //a[.//img]
+<div>: //p[.//img]
+<div>: //h3[.//img]

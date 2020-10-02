@@ -1,0 +1,165 @@
+~version: "2.0"
+
+  ?exists: //div[@id="tab-foto"]
+  !not_exists: //div[has-class("article-content")]
+
+body: //div[@id="tab-foto"]
+cover!!: null
+
+@replace("96x56", "978x0"): //li//img/@src
+@wrap(<figure>): //img
+@map(//figure) {
+  $cur: $@
+  @html_to_dom: $@/img/@alt
+  @wrap(<figcaption>): $@/text()
+  @append_to($cur): $@
+}
+
+<div>: //li
+
+@remove: //h2
+@remove: //figure[@class="full-width"]
+@remove: //div[@class="column-half"]
+
+  ?exists: //div[has-class("article-content")]
+
+title: //h1[@itemprop="headline"]
+body: //div[has-class("article-content")]
+site_name: "adevarul.ro"
+
+@if( "//span[has-class(\"keywords\")]//a[contains(.,\"livetext\")]" ) {
+  @append(<livetext>): $body
+  @unsupported: $@
+}
+@if( "$title[contains(.,\"LIVETEXT\")]" ) {
+  @append(<livetext>): $body
+  @unsupported: $@
+}
+
+<h6>: //h2[@class="articleOpening"]
+description: $@
+
+@before(<hr>): //div[@class="text"]
+@after(<hr>): //div[@class="text"]
+<div>: //div[@class="text"]//h4
+<h6>: //div[@class="text"]//b
+
+@replace("^\\s+$",""): //text()
+<p>: //div[has-class("article-body")]//text()[normalize-space()]/parent::div
+<p>: //div[has-class("article-body")]//text()[normalize-space()]/parent::p
+<div>: //p[.//p]
+
+@remove: //div[has-class("gallery-control")]
+@remove: //div[@id="toolbar"]
+@remove: //ul[has-class("share-buttons")]
+@remove: //p//text()[contains(., "Dacă apreciezi acest articol")]
+@remove: //iframe[contains(@src, "facebook.com/plugins/like.php")]
+
+@if("//iframe[contains(@src, \"storify.com\")]") {
+  @remove: //strong[contains(text(), "Mai puteţi citi")]
+}
+@remove: //noscript[prev-sibling::iframe[contains(@src, "storify.com")]]
+@remove: //iframe[contains(@src, "storify.com")]
+
+@replace("\\s+"," "): //figure[@class="full-width"]//figcaption/p
+@replace("\\s+"," "): //figure[@class="full-width"]//figcaption
+
+cover: //figure[@class="full-width"]
+image_url!: $cover
+
+@append(<p>): $body
+$authors_el: $@
+$authors: //meta[@itemprop="author"]
+@append_to($authors_el): $authors
+@before(", ")
+@remove: ($@)[1]
+@before(@content): $authors
+@remove:$authors_el
+author: $authors_el
+@simplify
+@remove: //aside[has-class("meta")]
+
+@map("//a[descendant::img][not(contains(@href, \"#\") or contains(@href, \"jpg\") or contains(@href, \"jpeg\") or contains(@href, \"png\") or contains(@href, \"gif\"))]") {
+  @set_attr(href, $@/@href): $@//img
+}
+
+<slideshow>: //section[has-class("galerie")]
+<figcaption>: //span[@class="titluTabGalerie"]
+@remove: //span[@class="comment-no"]
+@remove: //figure[@class="full-width"]
+# @replace("96x56", "627x0"): //slideshow//li//img/@src
+@replace("96x56", "978x0"): //slideshow//li//img/@src
+
+@map(//slideshow//li//img) {
+  @wrap(<figure>): $@
+  $cur: $@
+  @html_to_dom: $@/img/@alt
+  @wrap(<figcaption>): $@/text()
+  @append_to($cur): $@
+}
+
+@append(<related>): $body
+@if( "//h4[contains(text(), \"Citiţi şi\")]" ) {
+  <h3>: $@
+  $head: $@
+  @append_to(//related): $@/following::h4/a
+  @prepend_to(//related): $head
+}
+@if( "//p[contains(text(), \"Pe aceeaşi temă\")]" ) {
+  <h3>: $@
+  $head: $@
+  @append_to(//related): $@/following-sibling::p/a
+  @prepend_to(//related): $head
+}
+@if( "//strong[contains(text(), \"Vă recomandăm să citiţi şi următoarele ştiri\")]" ) {
+  <h3>: $@
+  $head: $@
+  @append_to(//related): $@/following::strong/a
+  @prepend_to(//related): $head
+}
+@if( "//strong[contains(text(), \"Vă mai recomandăm\") and following::strong/a]" ) {
+  <h3>: $@
+  $head: $@
+  @append_to(//related): $@/following::strong/a
+  @prepend_to(//related): $head
+}
+@if( "//strong[contains(text(), \"Vă mai recomandăm\") and following::a[child::strong]]" ) {
+  <h3>: $@
+  $head: $@
+  @append_to(//related): $@/following::a[child::strong]
+  @prepend_to(//related): $head
+}
+
+@combine(<br>, <br>): //blockquote/next-sibling::blockquote
+@after(<br>): //blockquote/*[not(self::br)][next-sibling::*[not(li)]]
+
+<h3>: //div[has-class("related")]/div[@class="meta"]
+<related>: //div[has-class("related")]
+
+<h3>: //div[has-class("article-box fotobox")]/div[@class="meta"]
+<related>: //div[has-class("article-box fotobox")]
+
+@remove: //related//img
+
+  ?true
+
+# =====LET ME DIE=====
+# Original code/idea by Misho @mushi_f
+# With modifications by Andrei Afanasiev
+
+$problems: $body
+@while( $problems ) {
+  $test: $body//*[self::video or self::blockquote or self::aside or self::figure or (self::img and not(./ancestor::figure)) or self::iframe or self::slideshow or self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)]]
+ 
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br]
+ 
+  @if( $problems ) {
+    $parent: $problems/parent::*
+    @detach: $parent/node()
+    @set_attr("merge", $index): $@
+    <remove>: $parent
+    @after_el("./parent::*"): $problems
+    @combine: $body//self::*[prev-sibling::*/@merge = @merge]
+  }
+}
+# ====================

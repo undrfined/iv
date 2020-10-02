@@ -1,0 +1,104 @@
+~version: "2.0"
+
+site_name: "NTN24"
+channel: "@ntn24ve"
+
+  ?exists: //meta[@property="og:description"]/@content
+  !path_not: .+quienes-somos.+
+
+title: //h1[@class="title"]
+body: //section[@id="section-content"]
+
+@replace("\\?.+",""): //img/@src
+@replace("http.+imagenes","http://i0.wp.com/imagenes"): //img/@src
+
+@after(<br>): //div[has-class("summary-pie-foto")]//p
+<h4>: //div[has-class("summary-pie-foto")]
+
+@if("//div[has-class(\"pane-node-field-imagen-apertura\")]") {
+  <figure>: //div[has-class("pane-node-field-imagen-apertura")]
+  $cover: $@
+  @append(<figcaption>): $cover
+  $figcap: $@
+  <cite>: //div[has-class("pane-node-field-pie-de-foto")]
+  @append_to($figcap): $@
+  @append_to($cover): $figcap
+  cover: $cover
+}
+
+@if( "//div[has-class(\"pane-node-field-videoembed\")]" ) {
+  <figure>: //div[has-class("pane-node-field-videoembed")]
+  $cover: $@
+  @append(<figcaption>): $cover
+  $figcap: $@ 
+  <cite>: //div[has-class("pane-node-field-pie-de-foto")]
+  @append_to($figcap): $@
+  @append_to($cover): $figcap
+  cover: $cover
+}
+
+@unsupported: //div[@class="kaltura-embed"]
+
+@replace("^\\s+$",""): //p//text()
+
+@remove: //aside[@id="region-sidebar-second"]
+@remove: //div[@class="jsonld-class"]
+@remove: //div[@id="breadcrumb"]
+@remove: //div[has-class("pane-node-field-foto-o-video")]
+@remove: //div[has-class("fecha-creacion")]
+@remove: //div[has-class("pane-node-field-alias-seccion")]
+
+@remove: //strong//text()[contains(., "telegram.me")]/ancestor::p
+@remove: //a[contains(@href, "24") and contains(@href, "youtube")]/ancestor::p
+@remove: //strong//text()[contains(., "Visítanos en nuestro canal de Youtube")]/ancestor::p
+
+@map("//a[.//img][not(contains(@href, \"#\") or contains(@href, \"jpg\") or contains(@href, \"jpeg\")  or contains(@href, \"png\"))]") {
+  @set_attr(href, $@/@href): $@//img
+}
+
+@if(//p[@class="jb-image"]) {
+  @prepend(<slideshow>): $body
+  <figure>: //p[@class="jb-image"]
+  <figcaption>: //figure[@class="jb-image"]//span[@class="jb-title"]
+  @append_to(//slideshow): //figure[@class="jb-image"]
+}
+
+<footer>: //strong[contains(text(), "Colaboración")]
+<footer>: //strong[contains(text(), "COLABORACIÓN")]
+<footer>: //strong[contains(text(), "Redacción")]
+<footer>: //strong[contains(text(), "REDACCIÓN")]
+
+<related>: //section[has-class("block-views")][descendant::h2[contains(text(), "Relacionados")]]
+
+@append_to("./ancestor::related/.."): //footer[ancestor::related]
+
+# <div>: //blockquote[.//footer]
+# <div>: //blockquote[.//iframe]
+# <div>: //blockquote[.//blockquote]
+# <div>: //p[.//img]
+# <div>: //p[.//footer]
+# <div>: //p[.//iframe]
+# <div>: //p[.//blockquote]
+# <div>: //strong[.//blockquote]
+# @wrap(<strong>): $@/text()
+
+# =====LET ME DIE=====
+# Original code/idea by Misho @mushi_f
+# With modifications by Andrei Afanasiev
+
+$problems: $body
+@while( $problems ) {
+  $test: $body//*[self::video or self::blockquote or self::aside or self::figure or (self::img and not(./ancestor::figure)) or self::iframe or self::slideshow or self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)]]
+ 
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br]
+ 
+  @if( $problems ) {
+    $parent: $problems/parent::*
+    @detach: $parent/node()
+    @set_attr("merge", $index): $@
+    <remove>: $parent
+    @after_el("./parent::*"): $problems
+    @combine: $body//self::*[prev-sibling::*/@merge = @merge]
+  }
+}
+# ====================

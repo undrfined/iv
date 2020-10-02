@@ -1,0 +1,109 @@
+~version: "2.1"
+
+site_name: "Techgear.gr"
+
+  ?exists: //meta[@property="og:type"][@content="article"]
+  !path_not: .+contact-techgear.+
+  !path_not: .+about
+
+body: //article
+title: $body//header//h1
+@replace("^\\s+$"," "): //text()
+$authorurl: (//header)[2]//span[@class="author"]/a/@href
+@prepend(<authors>): /html
+@append_to(//authors): (//header)[2]//span[@class="author"]//a[text()]
+@combine(", "): //authors/a/next-sibling::a
+author: //authors/a
+@if_not( "$author//text()[contains(.,\",\")]" ) {
+  author_url: $authorurl
+}
+
+@set_attr(src, @data-pk-src): //img[@data-pk-src]
+
+@replace("(http.+?) (\\d+)w(?:,|$)", "<link src=$1 res=$2>"): //img/@data-pk-srcset
+@append(@data-pk-srcset): //img[@data-pk-srcset]
+@html_to_dom: $@
+@set_attr(src, .//link[not(../link/@res>@res)]/@src): //img[@data-pk-srcset]
+
+@set_attr(src, @data-orig-file): //img[@data-orig-file]
+
+@replace("http:", "https:"): //link[@rel="canonical"]/@href
+@replace("http:", "https:"): //meta[@property="og:url"]/@content
+@replace("http:", "https:"): //a[.//img]/@href
+@replace("\/$", ""): //link[@rel="canonical"]/@href
+@replace("\/$", ""): //meta[@property="og:url"]/@content
+@replace("\/$", ""): //a[.//img]/@href
+
+@match("(?i).+(?<!\\.jpg|\\.jpeg|\\.png|\\.gif)$"): //a[.//img]/@href
+@set_attr(href, "./ancestor::a/@href"): $body//a[not(@href = //link[@rel="canonical"]/@href) and not(@href = //meta[@property="og:url"]/@content)]//img
+
+<figure>: //div[has-class("overlay-media")]
+cover: $@
+@prepend_to($body): /html//div[has-class("post-media")]
+<figure>: $@
+cover: $@
+
+@json_to_xml: $body//div[has-class("jetpack-slideshow")]/@data-gallery
+<figure>: $@/*
+$figure: $@
+<figcaption>: $figure/caption
+<img>: $figure/src
+@set_attr(src, ./text()): $@
+@append_to("./ancestor::div[1]"): $figure
+<slideshow>: $figure/..
+@remove: //text()[contains(.,"requires JavaScript")]
+
+<slideshow>: //ul[has-class("wp-block-gallery")]
+<slideshow>: //div[has-class("gallery")]
+<slideshow>: //p[.//img[has-class("size-thumbnail")][not(ancestor::slideshow)]]
+@set_attr(href, ""): //slideshow//img
+
+@after(<br>): //blockquote/p
+<pre>: //pre[@class="wp-block-preformatted"]
+
+@remove: //div[has-class("wp-video-playlist")]/video
+@map( "//div[has-class(\"wp-video-playlist\")]//noscript//ol//li" ) {
+  <div>: $@
+  $vidhold: $@
+  @append(<video>, src, ./a/@href): $vidhold
+  @wrap(<figure>): $@
+  @append(<figcaption>): $@
+  @append_to($@): $vidhold/a/text()
+  @remove: $vidhold/a
+}
+
+<div>: //figure[has-class("wp-block-embed-facebook")]
+@set_attrs(class, "fb-post", data-href, .//*/@href): $@
+
+<related>: //h3[contains(@id,"%ce%b4%ce%b9%ce%b1%ce%b2%ce%ac%cf%83%cf%84%ce%b5")]
+<related>: //div[@class="pk-inline-posts"]
+<related>: //div[@class="jp-relatedposts"]
+@prepend(<iframe>,src, "?relatedposts"): /html
+@inline: $@
+@append_to("//related[@class=\"jp-relatedposts\"]"): $@//url
+<a>: $@
+@set_attr(href, ./text()): $@
+<div>: //related//*[self::h5 or self::h3]
+
+@remove: //div[@class="entry-thumbnail"]
+@remove: //ul[@class="post-meta"]
+@remove: //span[@class="meta-category"]
+@remove: //div[@class="wpcnt"]
+@remove: //div[has-class("sharedaddy")]
+@remove: //section[@class="post-author"]
+@remove: //section[@class="post-tags"]
+@remove: //section[@class="post-comments"]
+
+<pic>: //table//img
+<div>: //figcaption[.//img]
+<div>: //figure[count(.//img)>1]
+# ====================
+$problems: $body
+@while( $problems ) {
+  $test: $body//*[self::blockquote or self::aside or self::figure or (self::img and not(./ancestor::figure)) or (self::iframe and not(./ancestor::figure)) or (self::video and not(./ancestor::figure)) or self::slideshow or self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)]]
+ 
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote[not(contains(@class,"twi") or contains(@class,"instagram") or contains(@class,"fb-"))] or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br]
+ 
+ @split_parent: $problems
+}
+# ====================

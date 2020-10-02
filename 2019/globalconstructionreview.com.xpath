@@ -1,0 +1,100 @@
+~version: "2.1"
+
+site_name: "Global Construction Review"
+
+  ?exists: //div[@class="blog-area"]
+  !exists: //strong[@class="meta"]
+
+@unsupported: //form
+@unsupported: //div[has-class("scrbbl-embed")]
+@unsupported: //div[has-class("wemap-livemap")]
+<iframe>: //div[@class="infogram-embed"]
+<unsupported>: //script[contains(@src,"wemap")]
+@unsupported: //unsupported
+
+body: //div[@class="blog-area"]
+title: $body//h1
+description: ($body//h3[normalize-space()])[1]
+description: ($body//p[normalize-space()][text()])[1]
+
+meta_el: $body//strong[@class="meta"]
+
+@if( "$meta_el[contains(text(),\"By\")]" ) {  
+  @clone: $meta_el
+  author_el: $@
+  @replace("(.*\\|.*)?by", "", i): $@/text()
+  author: $author_el
+  @remove
+
+  @match("(.+)\\|"): $body//strong[@class="meta"]/text()
+  @datetime(0, "gb-GB", "dd MMM yyyy"): $@
+  published_date: $@
+  @remove: $meta_el
+}
+
+@if_not( "$meta_el[contains(text(),\"By\")]" ) {
+  @datetime(0, "gb-GB", "dd MMM yyyy"): $meta_el
+  published_date: $@
+  @remove: $meta_el
+}
+
+@map("//a[.//img][not(contains(@href, \"#\") or contains(@href, \"jpg\") or contains(@href, \"jpeg\") or contains(@href, \"png\") or contains(@href, \"gif\"))]") {
+  @set_attr(href, $@/@href): $@//img
+}
+
+@map("//a[.//img][contains(@href, \"#\") or contains(@href, \"jpg\") or contains(@href, \"jpeg\") or contains(@href, \"png\") or contains(@href, \"gif\")]") {
+  @set_attr(src, $@/@href): $@//img
+}
+
+cover: //div[@class="image-holder"]//figure
+cover: //div[@class="image-holder"]//img
+image_url: $body//img/@src
+
+# @after(<hr>): //div[has-class("info-section")][has-class("right") or has-class("left")]
+# @before(<hr>)
+
+<figure>: //div[has-class("info-section")][.//img]
+<figcaption>: $$//*[self::p or self::div[@class="info-section-text"]]
+
+$yt: //object[.//param[@name="movie"][contains(@value,"youtube")]]
+@replace("/v/", "/embed/"): $yt//param[@name="movie"][contains(@value,"youtube")]/@value
+@set_attr(src, $@): $yt
+<iframe>
+@remove: $@//*
+
+$vimeo: //object[.//param[@name="movie"][contains(@value,"vimeo")]]
+@replace(".*clip_id=(\\d+).*", "https://player.vimeo.com/video/$1"): $vimeo//param[@name="movie"][contains(@value,"vimeo")]/@value
+@set_attr(src, $@): $vimeo
+<iframe>
+@remove: $@//*
+
+<div>: //p[count(.//br)>1]
+@wrap(<span>): $body//text()
+<p>: $body//br/next-sibling::br
+@replace("^\\s+$"," "): //text()
+
+@after(<br>): //blockquote//p
+
+<aside>: //blockquote[@class="comment-area"]
+# @before(<hr>)
+# @after(<hr>)
+
+# <related>: //*[contains(text(),"Further reading:") or contains(text(),"Further Reading:") or contains(text(),"See Also:") or contains(text(),"See also:")]/next-sibling::ul
+# @remove: $@/prev-sibling::*
+
+@remove: //a[@class="nbr-comment"]
+@remove: //a[@name="read"]
+@remove: //ul[@class="social-networks"]
+@remove: //*[self::img or self::iframe][@width=1]
+@remove: //div[@class="notification"]
+
+# ====================
+$problems: $body
+@while( $problems ) {
+  $test: $body//*[self::blockquote or self::aside or self::figure or (self::img and not(./ancestor::figure)) or (self::iframe and not(./ancestor::figure)) or (self::video and not(./ancestor::figure)) or self::slideshow or self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)] or self::script[@data-telegram-post]]
+ 
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote[not(contains(@class,"twi") or contains(@class,"instagram") or contains(@class,"fb-"))] or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br]
+ 
+ @split_parent: $problems
+}
+# ====================

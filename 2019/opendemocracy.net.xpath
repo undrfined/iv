@@ -1,0 +1,90 @@
+~version: "2.1"
+  
+  ?exists: //article
+  !path_not: .+/tagged.+
+
+@remove: //meta[@name="twitter:image:src"][contains(@content,"article_image_default")]
+@remove: //meta[@property="og:image"][contains(@content,"article_image_default")]
+
+@htmldecode: //meta[@property="og:description"]/@content
+description: $@
+
+title: //h1[@class="article-page__title"]
+body: //main[@id="main-content"]
+@replace("^\\s+$", " "): //text()
+
+subtitle: //div[@class="article-page__summary"]
+
+@wrap(<shit>): //text()[ends-with(.," | ")]
+<cite>: //div[@class="rich-text"][prev-sibling::shit]
+@remove: //shit
+
+cover: //div[@class="article-page__main-img-container"]//figure
+cover: //div[@class="article-page__main-img-container"]//img
+cover: //div[@class="article-page__main-img-container"]//iframe
+
+@prepend(<authors>): /html
+@append_to(//authors): //span[@class="article-page__author-link"]/a
+@replace("\\s+$", ""): //authors/a
+@replace("^\\s+", ""): //authors/a
+@combine(", "): //authors/a/next-sibling::a
+author: //authors/a
+
+@datetime: //div[@class="article-page__date"]
+published_date: $@
+
+@map("//a[.//img][not(contains(@href, \"#\") or contains(@href, \"jpg\") or contains(@href, \"jpeg\") or contains(@href, \"png\") or contains(@href, \"gif\"))]") {
+  @set_attr(href, $@/@href): $@//img
+}
+@map("//a[.//img][contains(@href, \"jpg\") or contains(@href, \"jpeg\") or contains(@href, \"png\") or contains(@href, \".gif\")]") {
+   @set_attr(src, $@/@href): $@//img
+}
+
+@wrap(<figure>): $body//iframe
+@wrap(<figure>): $body//img
+<figcaption>: $body//i[string-length(text())<250][ancestor::p[prev-sibling::figure or prev-sibling::div[has-class("article-page__media-content")][.//figure] or ancestor::div[has-class("article-page__rich-text")][prev-sibling::div[has-class("article-page__media-content")][.//figure]]]]
+@append_to("./preceding::figure[not(descendant::figcaption)][1]"): //figcaption[not(ancestor::figure)][1]
+
+<i>: //div[has-class("article-page__media-content")]//span
+
+@after(<br>): //blockquote/*[not(next-sibling::ul)][not(next-sibling::ol)][next-sibling::*]
+
+<aside>: //blockquote[@class="blockquote__pull-quote-quotation"]
+<aside>: //blockquote[@class="blockquote__pull-quote"]
+
+<related>: //section[@class="read-more"]
+<related>: //strong[contains(.//text(),"READ MORE")][.//a]
+
+@remove: //div[has-class("project")]
+@remove: //div[@class="article-page__authors-container"]
+@remove: //div[@class="article-page__date"]
+@remove: //div[@class="article-page__left-sidebar"]
+@remove: //div[@class="article-page__right-sidebar"]
+@remove: //section[@class="article__mobile-sharing"]
+@remove: //section[@id="newsletter"]
+@remove: //section[@class="comment-section"]
+@remove: //section[@class="article-footer"]
+@remove: //div[@class="article-list__text"]
+@remove: //div[@class="read-more__all"]
+@remove: //div[@class="article-page__profile-photo-container"]
+
+# =====LET ME DIE=====
+# Original code/idea by Misho @mushi_f
+# With modifications by Andrei Afanasiev
+
+$problems: $body
+@while( $problems ) {
+  $test: $body//*[self::video or self::blockquote or self::aside or self::figure or (self::img and not(./ancestor::figure)) or self::iframe or self::slideshow or self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)]]
+ 
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br]
+ 
+  @if( $problems ) {
+    $parent: $problems/parent::*
+    @detach: $parent/node()
+    @set_attr("merge", $index): $@
+    <remove>: $parent
+    @after_el("./parent::*"): $problems
+    @combine: $body//self::*[prev-sibling::*/@merge = @merge]
+  }
+}
+# ====================

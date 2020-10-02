@@ -1,0 +1,98 @@
+~version: "2.1"
+  
+site_name: "El Ancasti"
+image_url: //meta[@property="og:image"]/@content
+
+  ?exists: //meta[@property="og:url"][contains(@content,"/videos/")]
+
+@remove: //meta[@name="revisit-after"]
+description: //div[@class="bajada"]//p
+
+  ?exists: //meta[@property="og:type"]/@content[contains(.,"article")]
+  !not_exists: //meta[@name="revisit-after"]
+
+body: //main//div[@class="container"]
+body: //div[@class="galeria-de-videos"]
+title: //h1[@class="titular"]
+title: //div[@class="bajada"]//strong
+subtitle: //hgroup//strong[@class="bajada"]
+subtitle: //div[@class="bajada"]//p
+kicker: //h2[@class="volanta"]
+
+@replace("^\\s+$", " "): //text()
+<p>: //div[not(@class)][not(@id)][text()]
+
+@replace(" · ", " "): //div[@class="fecha"]
+@replace("\\w+, ", ""): //div[@class="fecha"]
+@datetime(-3, "es-AR", "dd 'de' MMMM 'de' yyyy HH:mm"): //div[@class="fecha"]
+published_date: $@
+
+@map("//a[.//img][not(contains(@href, \"#\") or contains(@href, \"jpg\") or contains(@href, \"jpeg\") or contains(@href, \"png\") or contains(@href, \"gif\"))]") {
+  @set_attr(href, $@/@href): $@//img
+}
+@map("//a[.//img][contains(@href, \".jpg\") or contains(@href, \".jpeg\") or contains(@href, \".png\") or contains(@href, \".gif\") or contains(@href, \".JPG\") or contains(@href, \".JPEG\") or contains(@href, \".PNG\") or contains(@href, \".GIF\")]") {
+  @set_attr(src, $@/@href): $@//img
+}
+
+@map( "//div[contains(@id, \"fot_\")]" ) {
+  $keydiv: $@
+  @replace("fot_(\\d+)_fot", "$1"): $keydiv/@id
+  @set_attr(key, "1 Jan 1970 ", @id, " second + ", 18, " second"): $keydiv
+  @datetime: $keydiv/@key
+  @prepend_to("$keydiv/img/@src"): $@
+  @replace("(\\d+)(\/u\/.+)f\\d+?x\\d+?-(\\d+)_\\d+", "$2f768x0-$3_$1"): $keydiv/img[contains(@src, "/f")]/@src
+}
+
+<figure>: //div[@class="fotointerior"]
+<figcaption>: //div[@class="instcodigo"]
+
+<slideshow>: //div[has-class("my-gallery")][following::div[@class="cuerpo-nota"]//p[normalize-space()]]
+@remove: $@/prev-sibling::h4[@class="titulo"]
+cover: //div[@class="main-content-foto"][count(.//figure) = 1]//figure#[not(preceding::iframe[ancestor::main])]
+
+@after(<br>): //blockquote/*[not(next-sibling::ul)][not(next-sibling::ol)][next-sibling::*]
+# <aside>: //blockquote[not(@class)]
+
+@wrap_inner(<b>): //*[contains(@style,"bold")]
+@wrap_inner(<i>): //*[contains(@style,"italic")]
+
+<div>: //aside[has-class("audio")]
+@before(<hr>)
+@after(<hr>)
+@wrap(<figure>): //audio
+<figcaption>: //*[@class="bajada-audio"]
+@append_to("./prev-sibling::figure"): $@
+
+<related>: //aside[has-class("relacionadas")]
+<div>: //related//*[self::h1 or self::h2 or self::h3 or self::h4 or self::h5 or self::h6]
+
+@remove: //div[@class="fecha-y-seccion"]
+@remove: //div[@class="tags-cloud"]
+@remove: //div[@class="galeria-miniaturas"]
+@remove: //div[has-class("otros-videos")]
+@remove: //div[@class="main-comentarios"]
+@remove: //div[contains(@class,"caja nota")]
+@remove: //a[@name]
+@remove: //div[@class="likear-noticia"]
+@remove: //div[has-class("valorar-noticia")]
+@remove: //div[has-class("item-titulo")]//h1
+@remove: //aside[@class="sidebar"]
+@remove: //section[@class="tres-relacionadas"]
+@remove: //div[@class="openpagefragment"]
+@remove: //div[has-class("ad-inside-article")]
+@remove: //hr[not(following::*[normalize-space()][text()][ancestor::article])]
+@remove: //div[has-class("noticias-relacionadas")]
+
+# ====================
+$problems: $body
+@while( $problems ) {
+  $test: $body//*[self::blockquote or self::aside or self::figure or (self::img and not(./ancestor::figure)) or (self::iframe and not(./ancestor::figure)) or (self::video and not(./ancestor::figure)) or self::slideshow or self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)]]
+ 
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote[not(contains(@class,"twi") or contains(@class,"instagram") or contains(@class,"fb-"))] or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br]
+ 
+ @split_parent: $problems
+}
+# ====================
+
+  ?path: /videos((?>/|)(\?.*|)$)
+body!!: null

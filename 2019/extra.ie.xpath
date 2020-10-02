@@ -1,0 +1,74 @@
+~version: "2.1"
+
+  ?exists: //meta[@property="og:type"][@content="article"]
+
+body: //article[contains(@id,"post-")]
+title: //h1[@class="entry-title"]
+
+author: //div[@class="td-post-author-name"]/a
+
+@remove: //div[has-class("td-post-header-holder")]//figcaption
+cover: //div[has-class("td-post-header-holder")]//figure
+cover: //div[has-class("td-post-header-holder")]//img
+
+@replace("^\\s+$", " "): //text()
+
+<p>: //blockquote//*[self::h1 or self::h2 or self::h3 or self::h4 or self::h5 or self::h6]
+@wrap_inner(<b>)
+@after(<br>): //blockquote//*[self::p]
+
+@map("//a[.//img][contains(@href, \".jpg\") or contains(@href, \".jpeg\") or contains(@href, \".png\") or contains(@href, \".gif\")]") {
+   @set_attr(src, $@/@href): $@//img
+}
+
+@map("//a[.//img][not(contains(@href, \".jpg\") or contains(@href, \".jpeg\") or contains(@href, \".png\") or contains(@href, \".gif\"))]") {
+   @set_attr(href, $@/@href): $@//img
+}
+
+<slideshow>: //div[has-class("justified-image-grid")]
+<figure>: $@//li
+<figcaption>: //p[has-class("jig-HTMLdescription")]
+@wrap(<span>): $@//text()
+<b>: $@[next-sibling::br[next-sibling::*]][not(prev-sibling::*)]
+
+<video>: //amp-brid-player
+$brid: $@
+@replace("(.+)","//cdn.brid.tv/live/partners/11144/hsd/$1.mp4"): $brid/@data-video
+@set_attr(src, @data-video): $brid
+
+<related>: //div[@class="inline_related_posts"]
+@append_to($body)
+@combine: //related/next-sibling::related
+
+@remove: //*[self::img or self::iframe][@width=1]
+@remove: //img[@src=""]
+@remove: //iframe[@src="about:blank"]
+@remove: //div[@class="td-module-meta-info"]
+@remove: //a[@rel="foobox"]//noscript
+@remove: //div[has-class("swp_social_panel")]
+@remove: //div[has-class("td-crumb-container")]
+@remove: //footer
+@remove: //div[@id="ex_sticky_wrapper"]
+@remove: //div[@id="ex-home-page-edge"]
+@remove: //div[has-class("td_block_related_posts")]
+@remove: //div[@id="ex_infinite_single"]
+@remove: //div[@role="complementary"]
+
+# ====================
+$problems: $body
+@while( $problems ) {
+  $test: $body//*[self::blockquote or self::aside or self::figure or (self::img and not(./ancestor::figure)) or (self::iframe and not(./ancestor::figure)) or (self::video and not(./ancestor::figure)) or self::slideshow or self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)] or self::script[@data-telegram-post]]
+ 
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote[not(contains(@class,"twi") or contains(@class,"instagram") or contains(@class,"fb-"))] or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br]
+ 
+ @split_parent: $problems
+}
+# ====================
+
+@unsupported: //form
+@unsupported: //div[@class="playbuzz"]
+@unsupported: //div[contains(@class, "Poll")]
+@unsupported: //a[@class="embedly-card"]
+<div>: //blockquote[contains(@class,"reddit")]
+<unsupported>: //script[contains(@src,"polldaddy") or contains(@src,"vidible") or contains(@src,"stackcommerce") or contains(@src,"complex.com") or contains(@src,"tumblr") or contains(@src,"whistleout") or contains(@src,"bbvms")]
+@unsupported: //unsupported

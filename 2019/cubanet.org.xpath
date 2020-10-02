@@ -1,0 +1,87 @@
+~version: "2.0"
+  
+  ?exists: //meta[@property="article:published_time"]/@content
+  !path_not: .+revista.+de-cubanet.+
+  !path_not: .+revista-mensual-de.+
+  !path_not: .+htdocs.+
+  !path_not: .+galeria-de-videos.+
+  
+body: //main[has-class("content")]
+title: //h1[@class="entry-title"]
+<h4>: //div[@itemprop="description"]//p
+@replace("^\\s+$", " "): //text()
+
+author: //a[has-class("author-name")]
+author: //h4[@itemprop="name"]
+author_url: //a[has-class("author-name")]/@href
+
+published_date: //meta[@property="article:published_time"]/@content
+
+@remove: //div[has-class("entry-meta")]
+@remove: //section[@class="about-author"]
+@remove: //footer
+@remove: //aside
+@remove: //div[has-class("facebookcomments")]
+
+@map("//a[.//img][not(contains(@href, \"#\") or contains(@href, \"jpg\") or contains(@href, \"jpeg\") or contains(@href, \"png\") or contains(@href, \"gif\"))]") {
+  @set_attr(href, $@/@href): $@//img
+}
+@map("//a[.//img][contains(@href, \"jpg\") or contains(@href, \"jpeg\") or contains(@href, \"png\") or contains(@href, \".gif\")]") {
+   @set_attr(src, $@/@href): $@//img
+}
+
+@map( $body//img[@srcset] ) {
+  $cur: $@
+  @append(<div>): //head
+  $box: $@
+  @while( $cur[string-length(@srcset)>0] ) {
+    @clone: $cur
+    $src: $@
+    @append_to($box): $src
+    
+    @set_attr(src, @srcset): $src
+    @match(".+?\\s"): $src/@src
+    @match("(?:\\s|^).+?\\s+?(\\d+)w(,|$)", 1): $src/@srcset
+    @match(".+?,(.+)", 1): $cur/@srcset
+  }
+  @set_attr(src, $box/img[not(../img/@srcset>@srcset)]/@src): $cur
+}
+
+@if( "//div[@class=\"entry-content-media\"]" ) {
+  @remove: $@
+  @wrap(<figure>): $body//img[1]
+}
+cover: //figure[not(preceding::p)]
+
+<slideshow>: //div[has-class("fastgallery")]
+<figure>: $@//div[@data-img]
+$figs: $@
+@wrap_inner(<figcaption>): $figs
+@append(<img>, src, @data-img): $figs
+
+$aud: //audio
+@set_attr(src, "./following::noscript//a/@href"): $aud
+@remove: $aud/following::noscript
+
+<related>: //div[@id="related-posts"]
+
+# =====LET ME DIE=====
+# Original code/idea by Misho @mushi_f
+# With modifications by Andrei Afanasiev
+
+$problems: $body
+@while( $problems ) {
+  $test: $body//*[self::video or self::audio or self::blockquote or self::aside or self::figure or (self::img and not(./ancestor::figure)) or self::iframe or self::slideshow or self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)]]
+ 
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br]
+ 
+  @if( $problems ) {
+    $parent: $problems/parent::*
+    @detach: $parent/node()
+    @set_attr("merge", $index): $@
+    <remove>: $parent
+    @after_el("./parent::*"): $problems
+    @combine: $body//self::*[prev-sibling::*/@merge = @merge]
+  }
+}
+# ====================

@@ -1,0 +1,137 @@
+~version: "2.1"
+  
+site_name: "mobilesyrup"
+
+<div>: //blockquote[contains(@class,"reddit")]
+@unsupported: //a[@class="embedly-card"]
+@unsupported: //div[contains(@class,"Poll")]
+<unsupported>: //script[contains(@src,"polldaddy")]
+@unsupported: //unsupported
+
+  ?exists: /html//script[.//text()[contains(.,"MBS_device_compare")]]
+
+@match("MBS_device_compare = (.+);", 1): /html//script[.//text()[contains(.,"MBS_device_compare")]]
+@json_to_xml: $@
+$xml: $@
+
+@remove: $xml/device_specs/*/*/device_thumb
+<tr>: $xml//spec_list/*
+@wrap_inner(<th>): $@
+
+@map( $xml/device_specs/*/* ) {
+  $cur: $@
+  @map( $xml//spec_list/*/th ) {
+    $th: $@
+    @set_attr(specname, $th): $cur/*
+    @append_to($th/..): $cur/*[name()=@specname or @name=@specname]
+  }
+}
+
+<table>: $xml//spec_list
+$t: $@
+<td>: $@/*/*[not(self::th)]
+
+@prepend(<tr>): $t
+$titles: $@
+@prepend(<td>, empty, ""): $titles
+@append_to($titles):  $xml/device_titles/*/*
+<td>
+@append_to(./..): $titles/*/title
+<b>
+@wrap(<p>)
+<pic>: $titles/*/thumb
+@set_attrs(src, ./url, height, 105): $@
+
+  ?exists: //meta[@property="article:published_time"]/@content
+
+body: //article
+title: //header//h1
+subtitle: //h2[@class="article-subheader"][not(.//*)]
+@replace("^\\s+$"," "): //text()
+
+@if( $xml ) {
+  @wrap_inner(<b>): $xml//th
+  @remove: ($xml//tr[count(.//pic)=1])[1]
+  @prepend_to(//div[has-class("device-comparision")]): $xml
+}
+
+@prepend(<authors>): /html
+@append_to(//authors): //div[@class="article-meta"]//span[@itemprop="name"]
+@combine(", "): //authors/span/next-sibling::span
+author: //authors/span
+@if_not ( "//authors//text()[contains(.,\",\")]" ) {
+  author_url: //div[@class="article-meta"]//a/@href[not(contains(.,"twitter"))]
+}
+
+@match("(?i).+(?<!\\.jpg|\\.jpeg|\\.png|\\.gif)$"): //a[.//img]/@href
+@set_attr(href, "./ancestor::a/@href"): $body//a[not(@href = //link[@rel="canonical"]/@href) and not(@href = //meta[@property="og:url"]/@content)]//img
+
+<figure>: //div[has-class("wp-caption")]
+<figcaption>: $@//p[has-class("wp-caption-text")]
+
+cover: //div[has-class("article-featured-image")]//figure
+cover: //div[has-class("article-featured-image")]//img
+cover: //div[has-class("article-featured-image")]//iframe
+cover: //h2[@class="article-subheader"]//figure
+cover: //h2[@class="article-subheader"]//img
+cover: //h2[@class="article-subheader"]//iframe
+
+<slideshow>: //div[has-class("slider")]
+@background_to_image: //div[has-class("slide-image")]
+
+<h4>: //div[has-class("pros-cons-container")]//p
+
+@after(<hr>): //div[has-class("pros-cons-container")][last()]
+
+<aside>: //blockquote[not(@class)][string-length(.//text())<150][not(starts-with(.//text(),"Update"))]
+
+@before(<hr>): //div[has-class("conclusion-section")]
+<h2>: //p[@class="sub-heading-3"]
+@replace("\\s+", " "): //div[@class="blockquote-container"]//p/text()
+<aside>: //div[@class="blockquote-container"]
+@before(<hr>): $@/..
+<b>: //div[has-class("review-score")]
+<b>: //aside[@class="blockquote-container"]//font
+@wrap(<aside>): //aside[@class="blockquote-container"]/parent::*//b
+@append("/10"): $@//span[@class="number"][not(contains(text(),"/"))]
+@combine: //div[has-class("conclusion-section")]//aside
+
+<related>: //div[@class="related-articles"]
+@remove: //a[has-class("category")]
+<related>: //p[strong[contains(text(), "Related")]]
+@append_to($body): //related
+@combine: //related/next-sibling::related
+
+@remove: //header
+@remove: /html//footer
+@remove: //div[@class="header"]
+@remove: //div[@id="comments-section"]
+@remove: //div[@id="menu-swap-container"]
+@remove: //aside[@class="news-sidebar"]
+@remove: //aside[@class="featured-news-sidebar"]
+@remove: //div[@id="mc_embed_signup"]
+@remove: //p//text()[contains(.,"the form below")]/ancestor::p/prev-sibling::*[self::h2 or self::h3]
+@remove: //p//text()[contains(.,"the form below")]/ancestor::p
+@remove: //p[.//a[contains(@href,"#subscribe")]]
+@remove: //a[@name]
+@remove: //hr/next-sibling::hr
+@remove: //hr[not(following::*[.//text()][ancestor::section])]
+@remove: //li[not(.//text() or .//img or .//iframe)]
+
+@replace(" \\| MobileSyrup$", ""): //meta[@property="og:title"]/@content
+@if( "//meta[@property=\"og:description\"][ends-with(@content, //meta[@property=\"og:title\"]/@content)]" ) {
+  description!!: $body//p
+}
+
+# ====================
+$problems: $body
+@while( $problems ) {
+  $test: $body//*[self::blockquote or self::aside or self::figure or (self::img and not(./ancestor::figure)) or (self::iframe and not(./ancestor::figure)) or (self::video and not(./ancestor::figure)) or self::slideshow or self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)]]
+ 
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote[not(contains(@class,"twi") or contains(@class,"instagram") or contains(@class,"fb-"))] or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br]
+ 
+ @split_parent: $problems
+}
+# ====================
+
+<pic>: //img[@height <= 50]
