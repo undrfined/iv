@@ -1,0 +1,125 @@
+~version: "2.1"
+
+site_name: "BAHIA NO AR"
+
+  ?exists: //meta[@property="article:published_time"]/@content
+
+body: //article[starts-with(@id, "post-")]
+title: //h1[@class="entry-title"]
+subtitle: //h2[@class="mh-subheading"]
+@replace("^\\s+$", " "): $body//text()
+
+author: //span[has-class("author")]//a
+
+# ====================
+@map("//a[.//img][not(contains(@href, \"#\") or contains(@href, \".jpg\") or contains(@href, \".jpeg\") or contains(@href, \".png\") or contains(@href, \".gif\"))]") {
+  @set_attr(href, $@/@href): $@//img
+}
+
+@map("//a[.//img][contains(@href, \".jpg\") or contains(@href, \".jpeg\") or contains(@href, \".png\") or contains(@href, \".gif\")]") {
+  @set_attr(src, $@/@href): $@//img
+  @set_attr(done, "")
+  @set_attr(srcset,"")
+}
+
+@set_attr(srcset, @data-wpfc-original-srcset): //img[@data-wpfc-original-srcset][not(@done)]
+@set_attr(src, @data-wpfc-original-src): //img[@data-wpfc-original-src][not(@done)]
+
+@replace("\/...x...x", "/"): //img/@src[contains(., ".pagespeed")]
+@replace("\/x", "/"): //img/@src[contains(., ".pagespeed")]
+@replace("\\.pagespeed.+", "")
+
+@set_attr(src, "//meta[@property=\"og:image\"]/@content"): //figure[@class="entry-thumbnail"]//img
+cover: //figure[@class="entry-thumbnail"]
+
+<slideshow>: //ul[contains(@class, "gallery") or contains(@class, "slider")]
+<slideshow>: //div[has-class("post_td_gallery")]
+<slideshow>: //div[has-class("gallery")]
+@set_attr(src, @href): $@//img
+@set_attr(href, "")
+
+# ====================
+# ====================
+$yt: //iframe[contains(@data-wpfc-original-src,"youtube.html")]
+@replace(".+\\#(.+)(\\?.+)?", "$1"): $yt/@data-wpfc-original-src
+@set_attr(src, "http://www.youtube.com/embed/", @data-wpfc-original-src): $yt
+
+@set_attr(src, @data-wpfc-original-src): //iframe[contains(@data-wpfc-original-src,"soundcloud") or contains(@data-wpfc-original-src,"instagram") or contains(@data-wpfc-original-src,"facebook") or contains(@data-wpfc-original-src,"twitter") or contains(@data-wpfc-original-src,"dailymotion")]
+# ====================
+# ====================
+@remove: //div[has-class("wp-video-playlist")]/video
+@map( "//div[has-class(\"wp-video-playlist\")]" ) {
+  $par: $@
+  <div>: $par//noscript//ol//li
+  $hold: $@
+  @append(<video>, src, ./a/@href): $hold
+  @wrap(<figure>): $@
+  @json_to_xml: $par//script
+  $xml: $@
+  <figcaption>: $xml//caption[normalize-space()][text()]
+  @append_to("$par//figure[not(figcaption)]"): $@
+  <figcaption>: $xml//description[normalize-space()][text()]
+  @append_to("$par//figure[not(figcaption)]"): $@
+  <figcaption>: $xml//title[normalize-space()][text()]
+  @append_to("$par//figure[not(figcaption)]"): $@
+  @remove: $hold/a
+  @remove: $par//xml
+}
+
+@remove: //div[has-class("wp-audio-playlist")]/audio
+@map( "//div[has-class(\"wp-audio-playlist\")]" ) {
+  $par: $@
+  <div>: $par//noscript//ol//li
+  $hold: $@
+  @append(<audio>, src, ./a/@href): $hold
+  @wrap(<figure>): $@
+  @json_to_xml: $par//script
+  $xml: $@
+  <figcaption>: $xml//caption[normalize-space()][text()]
+  @append_to("$par//figure[not(figcaption)]"): $@
+  <figcaption>: $xml//description[normalize-space()][text()]
+  @append_to("$par//figure[not(figcaption)]"): $@
+  <figcaption>: $xml//title[normalize-space()][text()]
+  @append_to("$par//figure[not(figcaption)]"): $@
+  @remove: $hold/a
+  @remove: $par//xml
+}
+# ====================
+# ====================
+@remove: //div[has-class("entry-tags")]
+@remove: //p[has-class("entry-meta")]
+@remove: //*[self::img or self::iframe][@height="1"]
+@remove: //img[@src=""]
+@remove: //iframe[contains(@*,"google")]
+@remove: //iframe[contains(@data-wpfc-original-src,"cloudfront") or contains(@data-wpfc-original-src,"bannersnack") or (contains(@data-wpfc-original-src,"bahianoar.com") and contains(@data-wpfc-original-src,"embed"))]
+<related>: //blockquote[has-class("wp-embedded-content")]
+@combine: //related/next-sibling::related
+# ====================
+# ====================
+@if( "//meta[@property=\"og:title\"][contains(@content, //meta[@property=\"og:description\"]/@content)]" ) {
+  description: $subtitle
+  description: ($body//p[normalize-space()][.//text()])[1]
+}
+
+@if ( "//p[normalize-space()][.//text()][1]//text()[contains(., //meta[@property=\"og:description\"]/@content)]" ) {
+  description: $subtitle
+  description: ($body//p[normalize-space()][.//text()])[1]
+}
+
+@if ( "//meta[@property=\"og:description\"]/@content[contains(., //p[normalize-space()][.//text()][1]//text())]" ) {
+  description: $subtitle
+  description: ($body//p[normalize-space()][.//text()])[1]
+}
+
+# ====================
+<p>: //div[not(@*)][normalize-space(text())]
+# ====================
+$problems: $body
+@while( $problems ) {
+  $test: $body//*[self::blockquote or self::aside or self::figure or (self::img and not(./ancestor::figure)) or (self::iframe and not(./ancestor::figure)) or (self::video and not(./ancestor::figure)) or self::slideshow or self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)]]
+ 
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote[not(contains(@class,"twi") or contains(@class,"instagram") or contains(@class,"fb-"))] or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br]
+ 
+ @split_parent: $problems
+}
+# ====================

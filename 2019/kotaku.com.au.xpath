@@ -1,0 +1,94 @@
+~version: "2.1"
+
+  ?not_exists: //meta[@property="og:type"][contains(@content,"article")]
+
+site_name: "Kotaku Australia"
+@remove: /html//head//title
+description!!: ""
+
+  ?exists: //meta[@property="og:type"][contains(@content,"article")]
+
+title: //h1
+body: //div[has-class("main__content")]
+
+# @replace("^0$", "no_hardcoding_allowed"): //article//a[contains(@href, "0")]/@href
+# @unsupported: //article//a[contains(@href, "no_hardcoding_allowed")]
+
+$mailto: //a[contains(@href,"0")][contains(.//text(), "@")][contains(.//text(), ".")]
+@set_attr(href, "mailto:", .//text()): $mailto
+
+@replace("^\\s+$", " "): //text()
+
+@replace(" and ", ", "): //div[has-class("meta__author")]//text()
+author: //div[has-class("meta__author")]//text()[normalize-space()]
+@if_not( "$author[contains(text(),\",\")]" ) {
+  author_url: //div[has-class("meta__author")]/a/@href
+}
+
+@remove: //blockquote[.//img]
+<b>: //*[self::h1 or self::h2][ancestor::blockquote]
+@after(<br>): //blockquote/*[not(next-sibling::ul)][not(next-sibling::ol)][next-sibling::*]
+
+@before(<hr>): //div[has-class("review-box")]
+@after(<hr>): //div[has-class("review-box")]
+
+@replace("(upload)(.+)(\/c)","$1$3"): //a[.//img]/@href
+
+<temp>: (//article//img)[1]
+@map("//a[.//img][contains(@href, \"jpg\") or contains(@href, \"jpeg\") or contains(@href, \"png\")]") {
+   @set_attr(src, $@/@href): $@//img
+}
+<img>: //temp
+@map("//a[.//img][contains(@href, \".gif\")]") {
+   @set_attr(src, $@/@href): $@//img#[not(contains(@src,".gif"))]
+}
+@match("(?i).+(?<!\\.jpg|\\.jpeg|\\.png|\\.gif)$"): //a[.//img]/@href
+@set_attr(href, "./ancestor::a/@href"): $body//a//img
+
+# @map("//a[.//img][not(contains(@href, \"#\") or contains(@href, \"jpg\") or contains(@href, \"jpeg\") or contains(@href, \".png\") or contains(@href, \"gif\"))]") {
+#   @set_attr(href, $@/@href): $@//img
+# }
+
+# @replace("(upload\/).+\/","$1t_original\/"): //a[.//img]/@href[contains(.,"upload")][not(contains(.,"t_original"))]
+
+# $gfycat: //iframe[contains(@src, "gfycat.com/ifr")]
+# @replace("(gfycat\\.com)\/ifr\/(.+)", "thumbs.$1/$2-mobile.mp4"): $gfycat/@src
+# @set_attr(loop, "loop"): $gfycat
+# <video>: $gfycat
+
+<figure>: //div[has-class("media_wrap")]
+@wrap(<figure>): //iframe
+<cite>: //article//small[prev-sibling::small]
+<figcaption>: //article//small[ancestor::figure]
+<figcaption>: //article//small[prev-sibling::figure]
+<figcaption>: //article//small[ancestor::p[prev-sibling::figure]]
+@append_to("./preceding::figcaption[not(descendant::cite)][1]"): //cite[not(ancestor::figcaption)][1]
+@append_to("./preceding::figure[not(descendant::figcaption)][1]"): //figcaption[not(ancestor::figure)][1]
+
+@wrap(<footer>): //small[not(ancestor::blockquote)]
+
+<slideshow>: //div[@class="owl-wrapper"]
+<figure>: //div[@class="item"]
+<figcaption>: //div[@class="content"]
+<cite>: //p[@class="source"]
+@append_to("./following::figcaption[not(descendant::cite)][1]"): //cite[not(ancestor::figcaption)][1]
+
+<related>: //div[has-class("referenced-article")]
+<related>: //div[@id="inner_related_posts"]
+@append_to($body): //related
+
+@remove: //related//img
+@remove: //div[@class="meta"]
+@remove: //hr[next-sibling::section]
+@remove: //section
+
+# ====================
+$problems: $body
+@while( $problems ) {
+  $test: $body//*[self::blockquote or self::aside or self::figure or (self::img and not(./ancestor::figure)) or (self::iframe and not(./ancestor::figure)) or (self::video and not(./ancestor::figure)) or self::slideshow or self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)]]
+ 
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote[not(contains(@class,"twi") or contains(@class,"instagram") or contains(@class,"fb-"))] or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br]
+ 
+ @split_parent: $problems
+}
+# ====================

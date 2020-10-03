@@ -1,0 +1,140 @@
+~version: "2.1"
+
+site_name: "60 Millions de Consommateurs"
+
+    ?exists: //div[@class="block-article-top"]//span[@class="date"]
+
+body: //div[@class="block-article-body"]
+title: //h1
+
+subtitle: //div[@class="teaser"]
+
+author: //span[@itemprop="name"]
+
+@datetime(0,"fr-FR","dd/MM/yyyy"): //span[@class="date"]/text()[normalize-space()]
+published_date: $@
+
+@map("//a[.//img][contains(@href, \".jpg\") or contains(@href, \".jpeg\") or contains(@href, \".png\") or contains(@href, \".gif\") or contains(@href, \".JPG\") or contains(@href, \".JPEG\") or contains(@href, \".PNG\") or contains(@href, \".GIF\")]") {
+  @set_attr(src, $@/@href): $@//img
+}
+
+@map("//a[.//img][not(contains(@href, \".jpg\") or contains(@href, \".jpeg\") or contains(@href, \".png\") or contains(@href, \".gif\") or contains(@href, \".JPG\") or contains(@href, \".JPEG\") or contains(@href, \".PNG\") or contains(@href, \".GIF\"))]") {
+  @set_attr(href, $@/@href): $@//img
+}
+
+<figcaption>: //div[@class="copyright"]
+
+# @before(<hr>): //div[has-class("asset-align-right") or has-class("asset-align-left")][not(ancestor::div[@class="encadre"])]
+# @after(<hr>)
+
+@before(<hr>): //div[@class="encadre"]
+@after(<hr>): $$[next-sibling::*]
+
+@after(<br>): //blockquote//p
+
+<table>: //div[has-class("asset-document")]
+$doc: $@
+<tbody>: $doc//div[@class="document"]
+<tr>: $doc//div[@class="title"]
+@wrap_inner(<td>)
+@wrap_inner(<b>): $@
+<tr>: $doc//div[@class="type"]
+@wrap_inner(<td>)
+<td>: $doc//div[@class="size"]
+@append_to("./prev-sibling::tr")
+<tr>: $doc//div[@class="file"]
+@wrap_inner(<th>)
+@wrap_inner(<b>): $@
+@set_attrs(align, center, valign, center): $doc//*[self::td or self::th]
+@set_attrs(colspan, 2): $doc//tr[count(.//td)=1]//td
+@set_attrs(colspan, 2): $doc//th
+
+@append_to($body): //div[has-class("form-tell-experience")][not(ancestor::div[@class="block-article-body"])]
+<h2>: $@//div[@class="title"]
+@before(<hr>): $@
+<slideshow>: //div[has-class("view-story-slideshow")]
+<figure>: //div[has-class("views-row")]
+<figcaption>: //div[has-class("views-field-field-slider-slides-title")]
+@wrap_inner(<b>)
+<figcaption>: //div[has-class("views-field-field-slider-slides-subtitle")]
+
+<h2>: //div[has-class("story-slideshow-title")]
+@before(<hr>)
+<slideshow>: //div[has-class("field-name-field-slider-slides")]
+@after(<hr>)
+<figure>: //div[has-class("field-collection-item-field-slider-slides")]
+<div>: $@//figure
+<figcaption>: //div[has-class("field-name-field-slider-slides-title")]
+@wrap_inner(<b>)
+<figcaption>: //div[has-class("field-name-field-slider-slides-subtitle")]
+
+@combine: //figcaption/next-sibling::figcaption
+
+@append_to($body): //div[has-class("view-display-id-topic_nodes")]
+<related>
+@append_to("./ancestor::related"): //related//a
+@remove: //related//a[position() > 10]
+
+<details>: //ul[has-class("mj_accordion")]/li
+@before(<summary>, "content", @alt): $@//div[has-class("mj_accordion_item")]//img
+@append(@content): $@
+@wrap_inner(<b>): //div[has-class("mj_accordion_item")]
+@wrap_inner(<b>): //summary
+
+$toc_trigger: //div[has-class("header-article-sommaire")]
+@if( $toc_trigger ) {
+  @remove: $toc_trigger
+  @prepend(<ul>, class, "toc", open, ""): $body
+  $toc_root: $@
+  $toc_list: $body//h2
+ 
+  @map( $toc_list ) {
+    $cur: $@
+    @append(<li>): $toc_root
+    @append(<a>)
+    $link: $@
+    @set_attr(href, "#", $index): $link
+    @clone: $cur
+    @append_to($link): $@/text()
+    @before(<anchor>): $cur
+    @set_attr(name, $index): $@
+  }
+}
+
+<details>: //ul[@class="toc"]
+@append(<summary>): $@
+@append("SOMMAIRE"): $@
+@wrap_inner(<b>)
+
+<pic>: $body//div[@class="encadre"]//img[not(ancestor::figure[.//figcaption[normalize-space()]])]
+<pic>: //img[@width<150]
+<aside>: //figure[.//pic]
+
+@replace("^\\s+$", " "): //text()
+<div>: //p[count(.//br)>1]
+@wrap(<span>): $@//text()
+<p>: $body//br/next-sibling::br
+
+@remove: //span[@class="category"]
+@remove: //div[@class="block-social-links"]
+@remove: //*[self::img or self::iframe][@width=1]
+@remove: //img[@src=""]
+@remove: //hr/next-sibling::hr
+
+# ====================
+$problems: $body
+@while( $problems ) {
+  $test: $body//*[self::blockquote or self::aside or self::figure or (self::img and not(./ancestor::figure)) or (self::iframe and not(./ancestor::figure)) or (self::video and not(./ancestor::figure)) or self::slideshow or self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)] or self::script[@data-telegram-post]]
+ 
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote[not(contains(@class,"twi") or contains(@class,"instagram") or contains(@class,"fb-"))] or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br]
+ 
+ @split_parent: $problems
+}
+# ====================
+
+<div>: //blockquote[contains(@class,"reddit")]
+@unsupported: //form
+@unsupported: //a[@class="embedly-card"]
+@unsupported: //div[contains(@class, "Poll") or @class="playbuzz" or @class="apester-media" or @class="flourish-embed"]
+<unsupported>: //script[contains(@src,"polldaddy") or contains(@src,"vidible") or contains(@src,"stackcommerce") or contains(@src,"complex.com") or contains(@src,"tumblr") or contains(@src,"whistleout")]
+@unsupported: //unsupported

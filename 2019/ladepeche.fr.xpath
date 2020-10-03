@@ -1,0 +1,215 @@
+~version: "2.0"
+
+site_name: "LADEPECHE.fr"
+
+  ?exists: //h1[@class="article-full__title"]
+  ?exists: //h1[@class="slideshow-full__title"]
+
+@unsupported: //form
+@unsupported: //div[has-class("scrbbl-embed")]
+@unsupported: //div[has-class("wemap-livemap")]
+@unsupported: //div[@class="qualifio_iframe_wrapper"]
+@unsupported: //div[@wibbitz]
+@unsupported: //section[@data-idalgo-loader-src]
+@unsupported: //div[@class="piktowrapper-embed"]
+<iframe>: //div[@class="infogram-embed"]
+<unsupported>: //script[contains(@src,"wemap")]
+<unsupported>: //script[contains(@src,"thinglink")]
+@unsupported: //unsupported
+
+<iframe>: //div[has-class("tenor-gif-embed")]
+@set_attr(src, "https://tenor.com/embed/", @data-postid, "?canonicalurl=", //link[@rel="canonical"]/@href)
+
+body: //main
+body: //article[@class="slideshow-full"]
+title: //h1[@class="article-full__title"]
+title: //h1[@class="slideshow-full__title"]
+<b>: //div[@class="article-full__chapo"]
+<b>: //p[@class="txt-question"]
+
+@replace("^\\s+$"," "): //text()
+
+author: //span[@class="author-name"]//text()
+
+@json_to_xml: //script[@data-type="application/ld+json"]
+@datetime(+1): //datePublished
+published_date: $@
+
+@datetime: //div[@class="article-full__infos-dates"]/span/time/@content
+published_date: $@
+
+@after(<br>): //blockquote//p
+
+@append_to($body): //div[@class="article-full__childs"]
+<related>: $@
+<h4>: $@//div[@class="u-section-header"]
+@remove: //related//div[@class="article-full__childs-media"]
+
+@while( "//related[count(.//a) > 5]" ) {
+  @remove: (//related//a)[last()]
+}
+
+@before(<hr>): //div[@class="std-frame"]
+@after(<hr>): //div[@class="std-frame"]
+
+@replace("(http.+?) (\\d+)w(?:,|$)", "<link src=$1 res=$2>"): //img/@srcset
+@append(@srcset): //img[@srcset]
+@html_to_dom: $@
+@set_attr(src, .//link[not(../link/@res>@res)]/@src): //img[@srcset]
+
+@set_attr(src, @data-src): //img[@data-src]
+@set_attr(src, "./ancestor::*[@data-src]/@data-src"): //img[ancestor::*[@data-src]]
+
+@match("(?i).+(?<!\\.jpg|\\.jpeg|\\.png|\\.gif)$"): //a[.//img]/@href
+@set_attr(href, "./ancestor::a/@href"): $body//a[not(@href = //link[@rel="canonical"]/@href) and not(@href = //meta[@property="og:url"]/@content) and not(contains(@href,"?"))]//img
+
+@wrap(<figure>): //img[not(ancestor::figure)][not(ancestor::noscript)]
+@wrap(<figure>): //div[@class="video-container"]//iframe[not(ancestor::figure)]
+cover: $@
+
+@if ( //figure[ancestor::li[@data-text]] ) {
+  @append(<figcaption>, content, "./ancestor::li/@data-text"): $@
+  @append(@content): $@
+  @html_to_dom: $@
+  @after(<br>): $@//p
+}
+
+@if ( //figure[ancestor::li[@data-title]] ) {
+  @append(<figcaption>, content, "./ancestor::li/@data-title"): $@
+  @append(@content): $@
+  @html_to_dom: $@
+  @after(<br>): $@//p
+}
+
+@if ( //figure[ancestor::li[@data-author]] ) {
+  $figs: $@
+  @append(<figcaption>): $@[not(.//figcaption)]
+  @append(<cite>, content, "./ancestor::li/@data-author"): $figs//figcaption 
+  @append(@content): $@
+}
+
+@if ( "//ul[count(.//li[@class=\"slideshow-full__pager-item\"]) = 1]" ) {
+  <slideshow>: //div[@class="slideshow-full__media"]
+  $s: $@
+  <cite>: //div[@class="slideshow-full__author"]
+  <figcaption>: //div[@class="slideshow-full__content"]
+  @prepend_to($s): $@
+  image_url: //slideshow//img/@src
+  description: //slideshow//figcaption//p/text()
+  
+  @append(<aside>): $body
+  $nav: $@
+  @append(" · "): $nav
+  @prepend_to($nav): //a[has-class("slideshow-full__pager-left")]
+  @append("←")
+  @append_to($nav): //a[has-class("slideshow-full__pager-right")]
+  @append("→")
+#   @if_not("$nav//a[has-class(\"slideshow-full__pager-right\")]") {
+#     body!!: null
+#   }
+  
+#   @match("(\\d+)\/?$", 1): //meta[@property="og:url"]/@content
+#   $ifdate: $@
+#   @if ( $ifdate ) {
+#     @replace("(\\d)(\\d)(\\d)(\\d)(\\d)(\\d)(\\d)(\\d)", "$1$2$3$4 $5$6 $7$8"): $@
+#     @datetime(0, fr-FR, "yyyy MM dd"): $@
+#     published_date: $@
+#   }
+}
+
+<div>: //div[@class="slideshow-full__wrapper"]//li
+
+<slideshow>: //ul[@class="article-full__media-slider"]
+cover: $@[count(.//figure) = 1]//figure
+
+####
+@remove: //div[@rel="js-survey-alert"]
+<tr>: //div[has-class("poll__footer")]
+$clone: $@
+<td>: $@//span
+@clone: $clone
+@remove: //tr[has-class("poll__footer")][1]//td[2]
+@remove: //tr[has-class("poll__footer")][2]//td[1]
+@set_attr(colspan, 3): //tr[has-class("poll__footer")]//td
+@wrap_inner(<b>): //tr[has-class("poll__footer")]//td
+
+<table>: //div[has-class("poll")]
+$poll: $@
+@wrap_inner(<tbody>): $poll
+<div>: //h2[@class="poll__title"]//a
+<caption>: $@/..
+@prepend_to("./ancestor::table"): $@
+@wrap_inner(<b>): $@
+<tr>: $poll//div[@class="poll__answer"]
+<th>: $poll//div[@class="poll__answer-label"]
+<td>: $poll//div[@class="poll__progress"]
+<td>: $poll//div[@class="poll__answer-percent"]
+
+@before_el("./ancestor::tr//td[@class=\"poll__answer-percent\"]"): //td[@class="poll__progress"]
+@after_el(./..): //div[@class="poll__answer-inner"]/*
+@remove: //div[@class="poll__answer-inner"]
+
+$bar: //td[@class="poll__progress"]/div
+@remove: $bar[contains(@style,"-")]
+@replace("%", ""): $bar/@style
+@style_to_attrs(width, width): $bar
+<pic>: $bar
+@set_attrs(src, "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mN8K63/HwAFbAI4DLWlhgAAAABJRU5ErkJggg==", height, 16): $@
+@map( $$ ) {
+  $bar_current: $@
+  @append(<current>, full, "100"): //head
+  $temp: $@
+  @set_attr(bar, $bar_current/@width): $temp
+
+  @set_attr(bar, "1 Jan 1970 ", @full, " second - ", @bar, " second"): $temp
+  @datetime: $temp/@bar
+  @set_attr(bar, $@): $temp
+
+  @after(<pic>, src, "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mM89x8AAqEBz+RdzIIAAAAASUVORK5CYII=", width, "./ancestor::html/head/current/@bar", height, 16): $bar_current
+  @remove: $@[@width = ""]
+  @remove: //head/current
+}
+@remove: //pic[@width=0]
+@set_attrs(align, center, valign, center): $poll//td
+@set_attr(align, left): //th[@class="poll__answer-label"]
+# @set_attr(align, left): //td[@class="poll__answer-percent"]
+<th>: $poll//td
+# @set_attr(border,0):$poll
+####
+
+@remove: //span[@class="article--premium__label"]
+@remove: //span[@class="author-name"]
+@remove: //span[has-class("article-full__chapo-label")]
+@remove: //div[@id="commentaires"]
+@remove: //div[has-class("article-full__right-col")]
+@remove: //div[@class="article-full__infos"]
+@remove: //div[@id="immobilier"]
+@remove: //div[@class="side-nav"]
+@remove: //header
+@remove: //span[@class="slideshow-full__topic"]
+@remove: //div[@class="slideshow-full__restart"]
+@remove: //div[@class="slideshow-full__pager"]
+@remove: //div[@class="slideshow-full__counter"]
+@remove: //li[@class="article-full__media-thumb"]
+@remove: //span[@class="article-full__media-author"]
+@remove: //div[@class="article-full__media-infos"]
+@remove: //div[@class="article-full__section-2"]
+@remove: //img[@class="u-portrait-img"]
+@remove: //hr[next-sibling::hr or not(next-sibling::*[normalize-space()][.//text()])]
+
+<div>: //table[.//img]
+<div>: //table[@class="default"]
+
+# ====================
+$problems: $body
+@while( $problems ) {
+  $test: $body//*[self::blockquote or self::aside or self::figure or (self::img and not(./ancestor::figure)) or (self::iframe and not(./ancestor::figure)) or (self::video and not(./ancestor::figure)) or self::slideshow or self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)]]
+ 
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote[not(contains(@class,"twi") or contains(@class,"instagram") or contains(@class,"fb-"))] or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br]
+ 
+ @split_parent: $problems
+}
+# ====================
+
+  ?path: .+image-du-jour/
+body!!: null

@@ -1,0 +1,57 @@
+~version: "2.1"
+
+site_name: "The Portugal News"
+
+body: //article
+@replace("\\s+", " "): $body//text()
+
+title: //h1[@class="title"]
+
+<b>: //*[@class="lead"]
+@wrap(<p>)
+
+cover: //div[@class="main-image"]//img
+
+$meta_el: //h1/next-sibling::small
+@wrap(<span>): $meta_el//text()[normalize-space()]
+@set_attr(id, "author"): ($meta_el//span)[1]
+@set_attr(id, "date"): ($meta_el//span)[3]
+
+@replace("by\\s(.+),\\sin", "$1", i): //small//span[@id="author"]
+@replace("\\sin\\s", "")
+author: //small//span[@id="author"]/text()[normalize-space()]
+# @set_attr(author, $$): /html
+
+@replace("^[^\\d]*|[^\\d]*$",""): //small//span[@id="date"]
+@datetime(0, "pr-PR", "dd-MM-yyyy HH:mm:ss")
+published_date: $@
+
+@after(<b>): //blockquote//p
+
+<div>: //p[count(.//br)>1]
+@wrap(<span>): $body//text()[not(ancestor::script)]
+@wrap(<p>): $body//br
+
+@remove: $meta_el
+@remove: //div[@class="pub"]
+@remove: //*[self::img or self::iframe][@width=1]
+@remove: //img[not(@src) or @src=""]
+
+# @if( "/html[contains(@author,\"Advertiser\")]" ) {
+#   body!!: null
+# }
+
+  ?not_exists: //b[@class="lead"]
+  !not_exists: $published_date
+body!!: null
+
+# ====================
+$problems: $body
+@while( $problems ) {
+  $test: $body//*[self::blockquote or self::aside or self::figure or (self::img and not(./ancestor::figure)) or (self::iframe and not(./ancestor::figure)) or (self::video and not(./ancestor::figure)) or self::slideshow or self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)] or self::script[@data-telegram-post]]
+ 
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote[not(contains(@class,"twi") or contains(@class,"instagram") or contains(@class,"fb-"))] or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br]
+ 
+ @split_parent: $problems
+}
+# ====================

@@ -1,0 +1,114 @@
+~version: "2.1"
+
+site_name: "LifeBoxset"
+
+  ?exists: //meta[@property="article:published_time"]/@content
+
+body: //div[@class="post-area"]
+title: //h1
+
+<h4>: //span[@class="post-social-title"]
+<b>: //span[@class="post-excerpt"]
+$sub: $@
+
+@match("post_date_time.*'(.+)',", 1): //div[@class="post-area"]/prev-sibling::script
+@datetime(0, mx-ES, "yyyy-MM-dd'T'HH:mm"): $@/text()
+published_date: $@
+
+author: //span[@class="post-author"]//a
+
+@remove: //img[@src=""]
+@remove: //img[not(@src)]
+cover: //div[@class="post-header"]//*[self::figure or self::img or self::iframe]
+
+@map("//a[.//img][contains(@href, \".jpg\") or contains(@href, \".jpeg\") or contains(@href, \".png\") or contains(@href, \".gif\") or contains(@href, \".JPG\") or contains(@href, \".JPEG\") or contains(@href, \".PNG\") or contains(@href, \".GIF\")]") {
+  @set_attr(src, $@/@href): $@//img
+}
+
+@map("//a[.//img][not(contains(@href, \".jpg\") or contains(@href, \".jpeg\") or contains(@href, \".png\") or contains(@href, \".gif\") or contains(@href, \".JPG\") or contains(@href, \".JPEG\") or contains(@href, \".PNG\") or contains(@href, \".GIF\"))]") {
+  @set_attr(href, $@/@href): $@//img
+}
+
+<figure>: //div[has-class("wp-caption")]
+<figcaption>: //p[@class="wp-caption-text"]
+
+<figure>: //div[@class="videoembed"]
+<figcaption>: //div[@class="videocaption"]
+
+@wrap(<figure>): //iframe[contains(@src,"giphy")][not(ancestor::figure)]
+@append_to("./prev-sibling::figure[.//iframe[contains(@src,\"giphy\")]]"): //p[.//a[contains(@href,"giphy")][.//text()[contains(.,"GIPHY")]]]
+<figcaption>
+
+<slideshow>: //ul[has-class("wp-block-gallery")]
+<slideshow>: //div[has-class("gallery")]
+@set_attrs(src, "./ancestor::a/@href", srcset, "", href, ""): $@//img
+
+@after(<br>): //blockquote//p
+
+#<related>: //ul[@class="related-posts"]
+@remove: //ul[@class="related-posts"]
+@if( //related ) {
+  @append_to($body): //related
+  @combine: //related/next-sibling::related
+}
+
+@remove: //*[self::iframe or self::img][@width=1]
+@remove: //*[self::iframe or self::img][@src="" or not(@src)]
+@remove: //span[@class="post-date"]
+@remove: //span[@class="post-author"]
+@remove: //div[@class="post-share"]
+@remove: //div[@class="footer-share"]
+@remove: //p[@class="post-tags"]
+@remove: //div[@class="in-read-ad"]
+@remove: //div[@class="post-footer"]
+@remove: //text()[contains(.,"Aquí va Teads.")]
+@if( "$sub[string-length()<40]" ) {
+  @append(<description>): //html
+  $desc: $@
+  @clone: ($body//p[normalize-space(.//text())][not(ancestor::figure)])[1]
+  @append_to($desc): $@
+  @clone: ($body//p[normalize-space(.//text())][not(ancestor::figure)])[2]
+  @append_to($desc): $@
+  @combine(" "): $desc//p/next-sibling::p
+  description: $desc[normalize-space()]
+}
+@if( "$sub[string-length()>40]" ) {
+  description: $sub[normalize-space()]
+}
+@if_not( $sub[normalize-space()] ) {
+  @append(<description>): //html
+  $desc: $@
+  @clone: ($body//p[normalize-space(.//text())][not(ancestor::figure)])[1]
+  @append_to($desc): $@
+  @clone: ($body//p[normalize-space(.//text())][not(ancestor::figure)])[2]
+  @append_to($desc): $@
+  @combine(" "): $desc//p/next-sibling::p
+  description: $desc[normalize-space()]
+}
+
+@replace("^\\s+$", " "): //text()
+<p>: //div[not(@class)][not(@id)][not(.//*[self::div or self::p])][text()]
+<div>: //p[.//br]
+@wrap(<span>): $body//text()[not(ancestor::*[self::script or self::style])]
+<p>: $body//br/next-sibling::br
+
+# ====================
+$problems: $body
+@while( $problems ) {
+  $test: $body//*[self::blockquote or self::aside or self::figure or (self::img and not(./ancestor::figure)) or (self::iframe and not(./ancestor::figure)) or (self::video and not(./ancestor::figure)) or self::slideshow or self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)] or self::script[@data-telegram-post]]
+ 
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote[not(contains(@class,"twi") or contains(@class,"instagram") or contains(@class,"fb-"))] or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br]
+ 
+ @split_parent: $problems
+}
+# ====================
+
+@unsupported: //div[@class="flourish-embed"]
+@unsupported: //div[@class="apester-media"]
+@unsupported: //form
+@unsupported: //div[@class="playbuzz"]
+@unsupported: //div[contains(@class, "Poll")]
+@unsupported: //a[@class="embedly-card"]
+<div>: //blockquote[contains(@class,"reddit")]
+<unsupported>: //script[contains(@src,"polldaddy") or contains(@src,"vidible") or contains(@src,"stackcommerce") or contains(@src,"complex.com") or contains(@src,"tumblr") or contains(@src,"whistleout") or contains(@src,"cnevids")]
+@unsupported: //unsupported

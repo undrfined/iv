@@ -1,0 +1,75 @@
+~version: "2.0"
+ 
+site_name: "La Neta Noticias"
+ 
+  ?exists: //meta[@property="article:published_time"]
+  
+body: //div[@id="content"]
+title: //h1[contains(@itemprop,"headline")]
+@replace("^\\s+$", " "): //text()
+
+author: //a[has-class("author")]
+author_url: //a[has-class("author")]/@href
+published_date: //meta[@property="article:published_time"]/@content
+
+cover: //div[@class="post-feature-image-wrapper"]//img
+
+@map("//a[.//img][not(contains(@href, \"#\") or contains(@href, \"jpg\") or contains(@href, \"jpeg\") or contains(@href, \"png\") or contains(@href, \"gif\"))]") {
+  @set_attr(href, $@/@href): $@//img
+}
+
+@map( $body//img[@srcset] ) {
+  $cur: $@
+  @append(<div>): //head
+  $box: $@
+  @while( $cur[string-length(@srcset)>0] ) {
+    @clone: $cur
+    $src: $@
+    @append_to($box): $src
+    
+    @set_attr(src, @srcset): $src
+    @match(".+?\\s"): $src/@src
+    @match("(?:\\s|^).+?\\s+?(\\d+)w(,|$)", 1): $src/@srcset
+    @match(".+?,(.+)", 1): $cur/@srcset
+  }
+  @set_attr(src, $box/img[not(../img/@srcset>@srcset)]/@src): $cur
+}
+
+<pic>: //img[contains(@src,"emoji.php")]
+
+<slideshow>: //div[has-class("gallery")]
+
+@after(<br>): //blockquote/*[not(next-sibling::ul)][not(next-sibling::ol)][next-sibling::*]
+
+@remove: //img[contains(@id,"mygraph")]
+@remove: //div[@class="post-breadcrumb"]
+@remove: //title
+@remove: //a[@name]
+@remove: //div[@class="post-meta-wrapper"]
+@remove: //h3[contains(text(),"Anímate a comentar. ¡Queremos saber tu opinión!")]
+@remove: //p[ends-with(text()," comentarios")]
+@remove: //div[has-class("fb-comments")]
+@remove: //a[contains(text(),"Facebook Comments")]/parent::p
+@remove: //div[@class="post-footer"]
+@remove: //div[@class="blog-pager"]
+
+# =====LET ME DIE=====
+# Original code/idea by Misho @mushi_f
+# With modifications by Andrei Afanasiev
+
+$problems: $body
+@while( $problems ) {
+  $test: $body//*[self::video or self::blockquote or self::aside or self::figure or (self::img and not(./ancestor::figure)) or self::iframe or self::slideshow or self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)]]
+ 
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br]
+ 
+  @if( $problems ) {
+    $parent: $problems/parent::*
+    @detach: $parent/node()
+    @set_attr("merge", $index): $@
+    <remove>: $parent
+    @after_el("./parent::*"): $problems
+    @combine: $body//self::*[prev-sibling::*/@merge = @merge]
+  }
+}
+# ====================

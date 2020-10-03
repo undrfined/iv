@@ -1,0 +1,159 @@
+~version: "2.0"
+
+@set_attr(content, "Metal Hammer"): //meta[@property="og:site_name"][contains(@content,"Metal")]
+@set_attr(content, "Prog"): //meta[@property="og:site_name"][contains(@content,"Prog")]
+@set_attr(content, "Blues"): //meta[@property="og:site_name"][contains(@content,"Blues")]
+@set_attr(content, "Classic Rock"): //meta[@property="og:site_name"][contains(@content,"Classic Rock")]
+@set_attr(content, "Louder"): //meta[@property="og:site_name"][contains(@content,"loudersound")]
+
+  ?exists: //meta[@name="pub_date"][not(@content = "")]
+  !path_not: .*deals-of-the-week
+
+title: //header//h1
+body: //div[@id="main"]
+
+@replace("^\\s+$", " "): //text()
+
+@wrap(<figure>): //img[not(ancestor::figure)][not(ancestor::div[@class="product"])]
+<figcaption>: //div[@class="caption-text"][not(ancestor::figcaption)]
+@append_to("./preceding::figure[not(descendant::figcaption)][1]"): //figcaption[not(ancestor::figure)][1]
+<cite>: //div[@class="credit"]
+@prepend(<figcaption>): //figure[not(descendant::figcaption)]
+@append_to("./preceding::figcaption[not(descendant::cite)][1]"): //cite[not(ancestor::figcaption)][1]
+
+cover: $body//figure[not(preceding::p[ancestor::section])][ancestor::div[@class="box" or @class="center-cropped"]]
+
+@remove: //span[has-class("by-author")][contains(.//text(),"(")]
+@prepend(<authors>): /html
+@append_to(//authors): //a[@rel="author"]/span[@itemprop="name"]
+@combine(", "): //authors/span/next-sibling::span
+author: //authors/span
+
+published_date: //meta[@name="pub_date"]/@content
+published_date: //time[@itemprop="datePublished"]/@datetime
+
+# {
+@prepend(<div>): $body
+$rating: $@
+$estar: "data:image/png;base64,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"
+$fstar: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGQAAABkCAMAAABHPGVmAAAB2lBMVEUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABwrzK6AAAAnXRSTlMAAQIDBAUGBwgJCgsNDg8QERITFBUXGBkaHB0eICEjJSYnKCkqKywtLzEyMzQ1Njc4Ojs8PT5AQ0RFRkdKTE9SVFVWV1lbXF1fYWJjZGZnaWtsbXBxc3R1d3h5e35/goOFiImMjo+RkpSVmJqbnaCio6Woqq+wtLW3ury+wMHDxcfIyszP0dPV19na3N7g4uTm6Onr7e/x8/X3+fv9BU0hIgAAAwBJREFUGBntwflDlEUABuB3vj1chIg4FEIFEwqMbFUiNBE8MDRBlEhLEciz0EpEIi9ESBFFRZFjd9//VQKCPb5vd2Z25qd6Hvx3fX7lWweWNZEcEbAqFOWSfbDqLP8xI2BRKMZl+2HR91zxWsCaDTGu+hrWnOG/XglYEoxyTQMs6eS6aQErghHGqYcVHYz3QsCCQIQJdsOC75hoSsC4wCKThGFcG5NNwjT/AlN8AcOOMdUTmOWfp4udMOoo3UzAJN88XdXAoMN0Nw5zfHP08BmMaaaXMZjivKOnKhhykN5GYYYzyzS2w4gmpvMAJjhvmFYFsicOMb17fugTOeV72wemmNm7oXMHKvMdKAmVho9f/5uqZga7GrflOcggWFLXemksxqxM/9bZsCVXIEWguOZQ34MoDXo2cHLPxzkCK/Lb/lygNRM9VQDqaNtN4Cmt+wjjtO5DhGnbIIBe2vUkgCX9tGkiiGU9tOdxAKt+pC2jAazpoh33/Yhzijb85UOCEzRv2EGSVpo25CBFM80aFHDRRJN+F3DVSHNuCHj4iqb8IuApTDMuI51amtCP9D6NMWsXkUlllFk6j8y2RZiVbsgoX2QWTkNO6QK1dUBWyRw1HYe8ollqOQoVBW+poQVqxqghH0oEdVRDSR51HIGSHdRxDUpaqGMKSi5TiwMVk9RSCAUO9dRCQQH1tEFBDfXchIJj1PMaCn6lJj/kvaSmEkjzUVcY0oqp6xSk7aKu25DWTl1zkHaL2oKQNUttZZAUYBrXig/P01sDJJXS060iAP72KL38AEn19DBShhUbztHDCCR10dVYJdbl/kxXEUi6QxeTtUhUcINuciBngSle1Quk2DTEVFsgJcRks00CrrbeZ7JvIKWciRZbffBUPcFEFyClkfGinQGk9eVzxnsIKT8xzoUQMhGNM1wXE5Bxl2uu5kGG0zzHNbmQEeGqP4ogy38iwlWbIeMtlw2XQUWwO8ZlBZBxnkseVUDVxj4umRaQ4et9OvAJdHzQPT5UiP9l6T0e+bcxzn5pBQAAAABJRU5ErkJggg=="
+$hstar: "data:image/png;base64,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"
+@map( "//span[has-class(\"icon-star\") and not(has-class(\"half\"))]" ) {
+  $orig: $@
+  @append(<pic>, src, $fstar, width, 20, heigth, 20): $rating
+  @remove: $orig
+}
+@map( "//span[has-class(\"half\")]" ) {
+  $orig: $@
+  @append(<pic>, src, $hstar, width, 20, heigth, 20): $rating
+  @remove: $orig
+}
+@while( "$rating[count(.//pic) < 5 and count(.//pic) > 0]" ) {
+  @append(<pic>, src, $estar, width, 20, heigth, 20)
+}
+
+@append_to(//header//h2): $rating
+subtitle: //header//h2
+# }
+
+# {
+<related>: //div[.//img][@class="fancy-box"][.//a][.//*[self::h1 or self::h2 or self::h3 or self::h4 or self::h5 or self::h6][contains(text(),"t Miss") or contains(text(),"T MISS")]]
+@remove: $@//*[self::h1 or self::h2 or self::h3 or self::h4 or self::h5 or self::h6][contains(text(),"t Miss") or contains(text(),"T MISS")]
+<related>: //div[@class="inlinegallery-item"][.//a//text()[contains(.,"lick here")]]
+<div>: $@//*[self::h1 or self::h2 or self::h3 or self::h4 or self::h5 or self::h6]
+@combine: //related/next-sibling::related
+
+<details>: //div[has-class("pagination")][not(.//ul[has-class("pagination-numerical-list")])]
+@wrap(<summary>): //span[@class="box-title"]
+@append_to($@): //span[@class="current-page"]//text()
+<b>: //span[@class="box-title"]
+<ol>: //details//ul[@class="pages"]
+<div>: //li[@class="current"]//a
+@remove: //p[@class="current"]
+@remove: //span[@class="page-title"]
+<table>: //div[has-class("pagination")]
+$table: $@
+<tr>: $table//ul
+<td>: $table//li
+@wrap(<th>): $table//a[@rel="prev"]
+@prepend_to($table//tr): $@
+@wrap(<th>): $table//a[@rel="next"]
+@append_to($table//tr): $@
+@set_attr(align, center): $table//td
+@set_attr(border, 0): $table
+
+@wrap(<details>): //div[has-class("fancy-box")]
+$details: $@
+@set_attr(open, ""): $details
+@wrap(<summary>): $details//h4
+@wrap(<summary>): $details//h5
+@wrap_inner(<b>): $details//summary
+
+<aside>: //figure//blockquote
+<aside>: //figure[.//aside]
+
+@prepend(" "): //a[ends-with(text(),"View Deal")]
+
+# }
+
+# {
+@set_attr(src, @data-src): //img#[not(ancestor::div[@class="product"])]
+@set_attr(src, @data-original-mos): //img#[not(ancestor::div[@class="product"])]
+
+@match("(?i).+(?<!\\.jpg|\\.jpeg|\\.png|\\.gif)$"): //a[.//img]/@href
+@set_attr(href, "./ancestor::a/@href"): $body//a[not(@href = //link[@rel="canonical"]/@href) and not(@href = //meta[@property="og:url"]/@content)]//img
+
+<pic>: //img[ancestor::div[@class="product"]]
+@set_attr(height, 200): $@
+@wrap(<h4>): //div[@class="product"]/p/a[./strong]
+@split_parent: $@
+<div>: $$//strong
+@wrap(<h4>): //*[1][self::strong or self::a[./strong]][ancestor::div[@class="product"]]
+@prepend_to("./ancestor::div[@class=\"product\"]"): //h4[ancestor::div[@class="product"]]
+
+@wrap(<aside>): //div[@class="product"]//a[.//pic]
+
+<slideshow>: //div[has-class("inlinegallery-wrap")]
+<div>: //slideshow[.//div[@class="inlinegallery-item"][count(.//p[@class="slide-description"]) > 2]]
+@prepend_to("./preceding::figcaption[ancestor::figure][1]"): //slideshow//h4
+@wrap(<b>): $@[ancestor::figcaption[.//*[not(self::h4)][.//text()]]]
+@append_to("./preceding::figcaption[ancestor::figure][1]"): //slideshow//p[@class="slide-description"]
+<div>: //slideshow[.//related]
+
+@before(<hr>): //p[.//img[contains(@src,"yNpDmDeY4mSQZr3FzJZ65h") or contains(@src,"ReypLqwpSwDdEjUjpzJgzG") or contains(@src,"pTkxDA77EYeCAcEASAAeBV") or contains(@src,"d7wGRCBjmpkeTZ2PRiwhE") or contains(@src,"kywbdETtPtiqKPsi7bQtuk")]]
+@remove: //p[.//img[contains(@src,"yNpDmDeY4mSQZr3FzJZ65h") or contains(@src,"ReypLqwpSwDdEjUjpzJgzG") or contains(@src,"pTkxDA77EYeCAcEASAAeBV") or contains(@src,"d7wGRCBjmpkeTZ2PRiwhE") or contains(@src,"kywbdETtPtiqKPsi7bQtuk")]]
+
+# }
+
+# {
+@set_attr(src, @data-lazy-src): //iframe[@data-lazy-src]
+
+<video>: //div[@class="future__jwplayer"]
+@replace("futr_botr_(.+)_.+_div", "https://content.jwplatform.com/videos/$1.mp4"): $@/@id
+@set_attr(src,@id): //video[@class="future__jwplayer"]
+# }
+
+# {
+@remove: //img[@src=""]
+@remove: //svg
+@remove: //nav
+@remove: //div[has-class("trending-wrapper")]
+@remove: //aside[@id="sidebar"]
+@remove: //p[@class="byline"]
+@remove: //span[has-class("category")]
+@before(<hr>): //div[@class="product"][.//h4][count(p[text()[normalize-space()]]) < 2]
+@after(<hr>): //div[@class="product"]
+@remove: //hr/next-sibling::hr
+@remove: //hr[not(following::*[.//text()[normalize-space()] or .//iframe or .//img][ancestor::div[@id="article-body"]])]
+# }
+
+# ====================
+$problems: $body
+@while( $problems ) {
+  $test: $body//*[self::blockquote or self::aside or self::figure or (self::img and not(./ancestor::figure)) or (self::iframe and not(./ancestor::figure)) or (self::video and not(./ancestor::figure)) or self::slideshow or self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)]]
+ 
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote[not(contains(@class,"twi") or contains(@class,"instagram") or contains(@class,"fb-"))] or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br]
+ 
+ @split_parent: $problems
+}
+# ====================

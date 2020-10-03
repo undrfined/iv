@@ -1,0 +1,119 @@
+~version: "2.1"
+
+site_name: "ГЛАВКОМ"
+channel: "@glavcomua"
+
+@remove: //meta[@property="og:description"][@content[ends-with(.,"Glavcom")]]
+@remove: //meta[@name="description"][@content[ends-with(.,"Glavcom")]]
+
+  ?exists: //article[has-class("article")]
+  !path_not: .+informaciya/.+
+
+body: //div[has-class("body")]
+title: //div[has-class("title")]/h1
+
+<h6>: //p[@class="header"]
+@wrap_inner(<b>): //p[has-class("header")]
+
+@replace("^\\s+$", " "): //text()
+
+@datetime(+2): //time/@datetime
+published_date: $@
+
+@remove: //li[has-class("author")]//p
+@prepend(<authors>): /html
+@append_to(//authors): //li[has-class("author")]//a[text()]
+@combine(", "): //authors/a/next-sibling::a
+author: //authors/a
+author: //li[has-class("author")]//text()
+
+<span>: //div[@class="copy"]//br
+@append(" "): $@
+@if( //div[@class="img"]/div[@class="alt"]/img ) {
+ @remove: //div[@class="img"]/div[@class="ihold"]/img
+ <figure>: //div[@class="img"]/div[@class="alt"]
+ @append(<figcaption>): $@
+ @append_to(//figure[@class="alt"]/figcaption): //div[@class="img"]/div[@class="copy"]
+ @wrap(<cite>): //div[@class="img"]//div[@class="author"]
+ @append_to(//figure[@class="alt"]/figcaption): $@
+ cover: //div[@class="img"]/figure[@class="alt"]
+}
+@if_not( $cover ) {
+ <figure>: //div[@class="img"]/div[@class="ihold"]
+ @append(<figcaption>): $@
+ @append_to($@): //div[@class="img"]/div[@class="alt"]
+ @wrap(<cite>): //div[@class="img"]/div[@class="copy"]
+ @append_to(//figure[@class="ihold"]/figcaption): $@
+ @wrap(<cite>): //div[@class="img"]//div[@class="author"]
+ @append_to(//figure[@class="ihold"]/figcaption): $@
+ cover: //figure[@class="ihold"]
+}
+
+<div>: //table[@class="MsoNormalTable"]
+
+@remove: //hr
+<details>: //div[has-class("info-img")]
+@set_attr(open, "")
+
+<blockquote>: //div[@class="vline"]
+@wrap_inner(<p>): //blockquote
+@combine: //blockquote/next-sibling::blockquote
+@before(<br>): //blockquote//p
+
+<figcaption>: //div[@class="alt"]
+@wrap(<figure>): //img[@itemprop="image"]
+@append_to("./preceding::figure[not(.//figcaption)][1]"): //following::figcaption[not(ancestor::figure)][1]
+
+<slideshow>: //div[@class="gall"][not(.//iframe)]
+<figure>: //div[@class="gall"]
+<figcaption>: //div[@class="alt_hold"]
+<cite>: //div[@class="auth"]
+
+@wrap(<figure>): //slideshow[@class="gall"]//img
+@wrap(<figure>): //div[@class="gall"]//iframe
+
+@set_attr(src, @data-big): //img[@data-big]
+
+@map(//slideshow[@class="gall"]//figure) {
+  $fig: $@
+  @html_to_dom: $fig/img/@alt
+  @wrap(<figcaption>): $@/text()
+  @append_to($fig): $@
+}
+
+@match("(?i).+(?<!\\.jpg|\\.jpeg|\\.png|\\.gif)$"): //a[.//img]/@href
+@set_attr(href, "./ancestor::a/@href"): $body//a[not(@href = //link[@rel="canonical"]/@href) and not(@href = //meta[@property="og:url"]/@content)]//img
+
+@wrap(<footer>): //p[@class="dzherelo"]
+@wrap(<footer>): //div[@class="dumka"]
+
+<related>: //div[has-class("read_more")]
+@append_to($body): $@
+@combine: //related/next-sibling::related
+@while( "//related[count(.//a) > 10]" ) {
+  @remove: (//related//a)[last()]
+}
+
+@remove: //div[has-class("box_media")]
+@remove: //div[has-class("poll")]
+@remove: //ul[has-class("credits")]
+@remove: //div[has-class("bn_hold")]
+@remove: //div[has-class("social-likes__widget")]
+@remove: //div[has-class("a_footer")]
+@remove: //section[has-class("comments_hold")]
+@remove: //div[has-class("block_lenta")]
+@remove: //a[@name]
+
+# ====================
+$problems: $body
+@while( $problems ) {
+  $test: $body//*[self::blockquote or self::aside or self::figure or (self::img and not(./ancestor::figure)) or (self::iframe and not(./ancestor::figure)) or (self::video and not(./ancestor::figure)) or self::slideshow or self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)]]
+ 
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote[not(contains(@class,"twi") or contains(@class,"instagram") or contains(@class,"fb-"))] or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br]
+ 
+ @split_parent: $problems
+}
+# ====================
+
+  ?exists: //div[contains(@class, "iMap")]
+body!!: null

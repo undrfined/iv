@@ -1,0 +1,95 @@
+~version: "2.1"
+
+site_name: "Theory & Practice"
+channel: "@tandp_ru"
+
+body: //section[@role="article"]
+body: //div[@class="articleBody"]
+title: //h1[has-class("title")]
+title: //h2[has-class("platform-header-title")]
+<b>: (//h3[@id])[1]
+
+@replace("^\\s+$", " "): $body//text()
+@remove: //p[not(*)][not(text())]
+
+<blockquote>: //div[@class="opinion"][.//img[contains(@src, "d5b5fb4b6d")]]
+@remove: $@//img
+
+<hr>: //div[has-class("image")][.//img[contains(@src, "1280bc8fa6") or contains(@src, "952ba93702")]]
+@remove: $@//img
+
+<hr>: //*[ends-with(text(), "***")]
+
+<details>: //div[@class="opinion"]
+# <summary>: //details//h2[@id]
+<div>: //details/div[@class="description"]/ul
+<pic>: //details//img
+@set_attr(height, 150)
+@wrap(<aside>): //details//a[.//pic]
+@wrap(<aside>): //details//pic[not(ancestor::a)]
+<h2>: //details//h4
+@before(<hr>): //details[not(prev-sibling::hr)]
+@after(<hr>): //details
+<div>: //details
+
+<details>: //figure[not(@class)]
+<summary>: $@/h5
+
+@wrap_inner(<sub>): //details[starts-with(text(), "*")]
+@after_el("./next-sibling::p"): //details[.//sub]
+
+@set_attr(open, ""): //details
+@wrap_inner(<b>): //summary
+
+@wrap_inner(<b>): //*[has-class("platform-content-strong")]
+
+@set_attr(src, @data-original): //img[@data-original]
+@replace("\\{width\\}", "base"): //img/@data-src
+@set_attr(src, @data-src): //img[@data-src]
+
+@map("//a[.//img][not(contains(@href, \"#\") or contains(@href, \"jpg\") or contains(@href, \"jpeg\") or contains(@href, \"png\") or contains(@href, \"gif\"))]") {
+  @set_attr(href, $@/@href): $@//img
+}
+
+<figure>: //div[has-class("image")][not(.//pic)][not(.//hr)]
+<figure>: //div[has-class("avatar_article")]
+<figcaption>: //*[has-class("description")]
+<figcaption>: //*[has-class("insideImageCaption")]
+
+<slideshow>: //div[has-class("dots_switcher")]
+
+cover: //figure[has-class("avatar_article")]
+@remove: /html//div[@class="player-cover"]
+<figure>: /html//div[@class="player-wrapper"]
+@prepend_to($body)
+<iframe>: $@/div[@data-provider="youtube"]
+@set_attr(src, "https://www.youtube.com/embed/", @data-id)
+cover: //figure[@class="player-wrapper"]
+
+@after(<br>): //blockquote//p
+
+<related>: //div[@class="post-inline-related"]
+<related>: //details[.//a[contains(@href, "theoryandpractice.ru")]][.//img][not(text())][not(.//p)]
+
+@remove: //div[@class="distribution"]
+@remove: //div[@class="main-small"]
+@remove: //meta[@property="article:author"][contains(@content, "/")]
+@remove: //div[has-class("startpage-new-post-uptitle")]
+@remove: //div[@class="author_article"]
+@remove: //div[@class="after_article_page"]
+@remove: //span[contains(@style, "background-color:#f3f9f9")][contains(text(), "Читайте нас")]
+@remove: //div[@class="article-body-breaking"]
+@remove: //hr[prev-sibling::hr or prev-sibling::h3]
+@remove: //hr[not(following::*[normalize-space()][text()])]
+@remove: //div[@class="textIllustrated"]/*[last()][self::hr]
+
+# ====================
+$problems: $body
+@while( $problems ) {
+  $test: $body//*[self::blockquote or self::aside or self::figure or (self::img and not(./ancestor::figure)) or (self::iframe and not(./ancestor::figure)) or (self::video and not(./ancestor::figure)) or self::slideshow or self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)]]
+ 
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote[not(contains(@class,"twi") or contains(@class,"instagram") or contains(@class,"fb-"))] or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br]
+ 
+ @split_parent: $problems
+}
+# ====================

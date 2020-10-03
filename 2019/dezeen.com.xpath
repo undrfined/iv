@@ -1,0 +1,96 @@
+~version: "2.1"
+
+site_name: "Dezeen"
+
+  ?exists: //meta[@property="og:type"][contains(@content,"article")]
+  !path_not: .+awards.+categories.*
+  !path_not: .+advertise.*
+  !path_not: .+awards/
+  
+body: //article[has-class("post") or has-class("main-article")]
+<div>: //h1//a
+title: //article//header//h1
+
+@if_not( "//meta[@name=\"article:published_time\"]/@content" ) {
+  @if_not( "//meta[@property=\"article:published_time\"]/@content" ) {
+    @json_to_xml: //script[@data-type="application/ld+json"]
+    @datetime(+1): //datePublished
+    published_date: $@
+   }
+}
+
+author: //div[@class="author-info"]//a[@rel="author"]
+
+<related>: //aside[@class="related-in-article-wrapper"]
+@remove: $@//img
+
+@map("//a[.//img][not(contains(@href, \"#\") or contains(@href, \"jpg\") or contains(@href, \"jpeg\") or contains(@href, \"png\") or contains(@href, \"gif\"))]") {
+  @set_attr(href, $@/@href): $@//img
+}
+
+@set_attr(src, "./ancestor::figure[@data-lightboximage]/@data-lightboximage"): //figure[@data-lightboximage]//img
+@set_attr(src, @data-src): //*[@data-src]
+@set_attr(srcset, @data-srcset): //img[@data-srcset]
+
+<figure>: //aside[has-class("main-video")]
+
+<slideshow>: //ul[has-class("carousel")]
+<slideshow>: //div[has-class("extra-lightbox-images")]
+
+cover: //header//figure[not(ancestor::slideshow[count(.//figure) > 1])]
+
+@set_attr(href, "./ancestor::a/@href"): //a[ends-with(@href,".gif")]//img[ancestor::figure[.//figcaption[contains(text(), "lick")]]]
+
+<div>: //footer
+@before(<hr>): $@[@class="article-footer"][.//text()[normalize-space()]]
+
+<aside>: //blockquote[has-class("pq")]
+<aside>: //blockquote[has-class("pullquote")]
+
+<th>: //aside[@class="bo_p"]
+@wrap(<tr>): $@
+@wrap(<tbody>): $@
+@wrap(<table>): $@
+@set_attr(border, 0): $@
+@set_attr(align, left): $$//th
+
+@after(<br>): //*[self::blockquote or self::table[.//th[@class="bo_p"]]]//p
+
+@before(<anchor>): //p[@id]
+@set_attr(name, "./next-sibling::p/@id"): $@
+@if( "$body//a[starts-with(@href,\"#\")]" ) {
+  @before(<anchor>): //figure[@id[not(contains(.,"preload"))]]
+  @set_attr(name, "./next-sibling::figure/@id"): $@
+}
+
+@combine(" | "): //ul[@class="awards-filter"]/li
+<h4>: $@
+
+@remove: //div[@class="author-info"]
+@remove: //div[@class="article-body-sharing-wrap"]
+@remove: //div[@id="newsletter-form"]
+@remove: //aside[has-class("share-in-footer")]
+@remove: //aside[has-class("more-in-footer")]
+@remove: //aside[@id="comments"]
+@remove: //div[@class="read-more"]
+@remove: //div[has-class("recommended-movies")]
+@remove: //aside[@class="related-content"]
+@remove: //p[.//text()[contains(.,"Subscribe to Dezeen")]]/prev-sibling::hr
+@remove: //p[.//text()[contains(.,"Subscribe to Dezeen")]]/next-sibling::hr
+@remove: //p[.//text()[contains(.,"Subscribe to Dezeen")]]
+@remove: //text()[ends-with(.,"Save")]
+@remove: //ul[not(.//a[starts-with(@href,"#")])][@class]
+@remove: //meta[@property="article:author"]
+@remove: //div[@class="category-type-background"]
+@remove: //h4[@class="category-type-foreground"]
+
+# ====================
+$problems: $body
+@while( $problems ) {
+  $test: $body//*[self::blockquote or self::aside or self::figure or (self::img and not(./ancestor::figure)) or (self::iframe and not(./ancestor::figure)) or (self::video and not(./ancestor::figure)) or self::slideshow or self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)]]
+ 
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote[not(contains(@class,"twi") or contains(@class,"instagram") or contains(@class,"fb-"))] or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br]
+ 
+ @split_parent: $problems
+}
+# ====================

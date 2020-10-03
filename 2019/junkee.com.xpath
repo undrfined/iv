@@ -1,0 +1,139 @@
+~version: "2.0"
+
+  ?exists: //meta[@property="og:type"][contains(@content,"article")]
+  !not_exists: //meta[@property="og:site_name"][contains(@content,"AWOL")]
+  
+@unsupported: //a[@class="e-gleam"]
+
+title: //span[@class="article-title__main"]
+@if ( "//h1[has-class(\"article-title\")][ends-with(text(), \"...\")]" ) {
+  title: //h1[has-class("article-title")]/@title
+}
+title: //h1[has-class("article-title")]
+title: //span[@class="gallery-header__grouper"]//h1
+subtitle: //span[@class="article-title__sub"]
+<h6>: //div[@class="article-excerpt"]
+subtitle: $@
+
+@if ( "//meta[@property=\"og:url\"]/@content[contains(., \"longform\")]" ) {
+  body: //main[@id="content"]
+}
+body: //article[starts-with(@id, "post-")]
+
+@replace("^\\s+$", " "): //text()
+
+@if ( //span[@class="author-grouper"] ) {
+  @prepend(<authors>): /html
+  @append_to(//authors): //span[@class="words"]
+  @append_to(//authors): //span[@class="photos"]
+  @replace("\\w+ by",""): //authors//text()
+  @replace(" and ",", "): //authors//text()
+  @combine(", "): //authors/span/next-sibling::span
+  author: //authors
+}
+@if_not( //span[@class="author-grouper"] ) {
+  author: //span[@class="author"]//a
+  author_url: //span[@class="author"]//a/@href
+}
+
+@if_not ( //meta[@property="article:published_time"] ) {
+  @datetime(0, "en_AU", "dd/MM/yyyy"): //div[@class="article-details"]//span[last()]
+  published_date: $@
+  @remove: //div[@class="article-details"]
+}
+
+@map( $body//img[@srcset] ) {
+  $cur: $@
+  @append(<div>): //head
+  $box: $@
+  @while( $cur[string-length(@srcset)>0] ) {
+    @clone: $cur
+    $src: $@
+    @append_to($box): $src
+    
+    @set_attr(src, @srcset): $src
+    @match(".+?\\s"): $src/@src
+    @match("(?:\\s|^).+?\\s+?(\\d+)w(,|$)", 1): $src/@srcset
+    @match(".+?,(.+)", 1): $cur/@srcset
+  }
+  @set_attr(src, $box/img[not(../img/@srcset>@srcset)]/@src): $cur
+}
+
+@map("//a[.//img][not(contains(@href, \"#\") or contains(@href, \".jpg\") or contains(@href, \".jpeg\")  or contains(@href, \".png\") or contains(@href, \".gif\"))]") {
+  @set_attr(href, $@/@href): $@//img
+}
+@map("//a[.//img][contains(@href, \".jpg\") or contains(@href, \".jpeg\")  or contains(@href, \".png\") or contains(@href, \".gif\")]") {
+  @set_attr(src, $@/@href): $@//img
+}
+
+@set_attr(src, @data-src): //iframe
+
+cover: //div[has-class("article-image-container")]//img
+
+<slideshow>: //div[has-class("flexslider")]
+<figure>: //li[.//img]
+<figcaption>: //span[has-class("carousel-item-caption")]
+<figcaption>: //span[has-class("carousel-caption")]
+
+<figure>: //div[has-class("wp-caption")]
+<figcaption>: $@//p[has-class("wp-caption-text")]
+
+<figcaption>: //p[@class="listicle__caption"]
+@append_to("./preceding::figure[not(descendant::figcaption)][1]"): //figcaption[not(ancestor::figure)][1]
+
+<aside>: //blockquote[not(@class)]
+<div>: //aside[contains(@class,"sponsored")]
+
+<related>: //div[@class="related-articles"]
+# <h4>: $@//div[@class="related-articles__heading"]
+
+@before(<hr>): //section[has-class("listicle__item")]
+# <hr>: //div[@class="listicle__boiler"]
+
+###
+# @before(<hr>): //div[has-class("article-native-container")]
+# @after(<hr>): //div[has-class("article-native-container")]
+# <pic>: //div[has-class("article-native-container")]//img
+# @set_attrs(width, "70", height, "70"): $@
+# @before(<br>): //div[has-class("article-native-container")]//pic
+# @before(<br>): //div[has-class("article-native-container")]//pic
+# @after(<br>): //div[has-class("article-native-container")]//pic
+
+# @wrap(<aside>): //div[has-class("article-native-container")]
+# @wrap(<b>): //div[has-class("article-native-container")]//a[@class="native-advertiser"]
+# @prepend_to("./ancestor::div[has-class(\"article-native-container\")]"): $@
+####
+
+@remove: //p[@class="article-excerpt"]
+@remove: //span[@class="article-section"]
+@remove: //div[has-class("article-details-group")]
+@remove: //footer[@id="article-footer"]
+@remove: //aside[has-class("sidebar")]
+@remove: //related//img
+@remove: //div[has-class("article-native-container")]
+@remove: //div[@id="advert-wrapper"]
+@remove: //div[@class="article-image-overlay"]
+@remove: //span[@class="gallery-header__grouper"]
+@remove: //footer[has-class("gallery-footer")]
+@remove: //div[@class="footer-to-top"]
+@remove: //h6[@class="listicle__count"]
+# =====LET ME DIE=====
+# Original code/idea by Misho @mushi_f
+# With modifications by Andrei Afanasiev
+
+$problems: $body
+@while( $problems ) {
+  $test: $body//*[self::video or self::blockquote or self::aside or self::figure or (self::img and not(./ancestor::figure)) or self::iframe or self::slideshow or self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)]]
+ 
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br]
+ 
+  @if( $problems ) {
+    $parent: $problems/parent::*
+    @detach: $parent/node()
+    @set_attr("merge", $index): $@
+    <remove>: $parent
+    @after_el("./parent::*"): $problems
+    @combine: $body//self::*[prev-sibling::*/@merge = @merge]
+  }
+}
+# ====================

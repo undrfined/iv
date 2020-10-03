@@ -1,0 +1,91 @@
+~version: "2.1"
+
+<div>: //blockquote[@class="reddit-card"]
+@unsupported: //div[@class="playbuzz"]
+
+title: //h1[@class="entry-title"]
+subtitle: //p[@class="td-post-sub-title"]
+body: //article[starts-with(@id, "post-")]
+
+author: //div[@class="td-post-author-name"]//a
+author_url: //div[@class="td-post-author-name"]//a/@href
+
+cover: //div[@class="td-post-featured-image"]//figure
+cover: //div[@class="td-post-featured-image"]//img
+
+@replace("^\\s+$", " "): //text()
+
+@map("//a[.//img][not(contains(@href, \"#\") or contains(@href, \"jpg\") or contains(@href, \"jpeg\")  or contains(@href, \"png\") or contains(@href, \"gif\"))]") {
+  @set_attr(href, $@/@href): $@//img
+}
+
+@map("//a[.//img][contains(@href, \"jpg\") or contains(@href, \"jpeg\")  or contains(@href, \"png\") or contains(@href, \"gif\")]") {
+  @set_attr(src, $@/@href): $@//img
+}
+
+#@replace("-[0-9]+x[0-9]+\\.(jpg|jpeg|png)", ".$1"): //img/@src
+
+# @replace("(http.+?)(?=\\d+w)(\\d+)w(?:,|$)", "<link src=$1 res=$2>"): $body//img/@srcset
+# @append(@srcset): $body//img[@srcset]
+# @html_to_dom: $@
+# @set_attr(src, .//link[not(../link/@res>@res)]/@src): $body//img[@srcset]
+
+<slideshow>: //ul[has-class("wp-block-gallery")]
+
+<pic>: //img[@width < 100]
+<pic>: //img[ancestor::td]
+
+@replace(".+(playwire.com\/\\d+\/videos\/)v2\/(\\d+).+", "\/\/cdn.video.$1$2\/video-sd.mp4"): //script[contains(@data-config, "playwire")]/@data-config
+<video>: //script[contains(@data-config, "playwire")]
+@set_attr(src, @data-config): $@
+
+$gfycat: //iframe[contains(@src, "gfycat.com/ifr")]
+@replace("(gfycat\\.com)\/ifr\/(.+)", "thumbs.$1/$2-mobile.mp4"): $gfycat/@src
+@set_attr(loop, "loop"): $gfycat
+<video>: $gfycat
+gfycat!!: null
+
+$gfycat: //video[.//source[contains(@src,"webm")][contains(@src, "gfycat")]]
+@replace(".+\/(.+)\\..+", "$1"): $gfycat//source/@src
+@set_attr(src, "https://thumbs.gfycat.com/", .//source/@src, "-mobile.mp4"): $gfycat
+@set_attr(loop, "loop"): $gfycat
+@remove: $gfycat//source
+gfycat!!: null
+
+@after(<br>): //blockquote[not(@class) or @class="wp-block-quote"]/*[not(self::br)][next-sibling::*[not(li)]]
+
+# <related>: //ul//li[.//a]//text()[contains(., "Read more") or contains(., "Read More") or contains(.,"MORE") or contains(., "More") or contains(., "Read Also") ]/ancestor::ul
+
+# <related>: //p[.//a]//strong//text()[contains(., "Read also") or contains(., "Read Also")]/ancestor::p
+
+@remove: //div[has-class("code-block")]
+@remove: //div[@class="meta-info"]
+@remove: //div[has-class("td-a-rec")]
+@remove: //footer
+@remove: //div[@role="complementary"]
+# @remove: //li[not(.//text()) and not(@class)]
+@remove: //strong[contains(.//text(), "rought to you by")][.//a]
+@remove: //hr[not(preceding::p[text()][ancestor::div[has-class("td-post-content")]])]
+# @remove: //p[ends-with(.//text(),":")][not(following-sibling::*[.//text()])]
+@remove: //hr[not(following::*[.//text()][ancestor::div[has-class("td-post-content")]])]
+
+# =====LET ME DIE=====
+# Original code/idea by Misho @mushi_f
+# With modifications by Andrei Afanasiev
+
+$problems: $body
+@while( $problems ) {
+  $test: $body//*[self::video or self::blockquote or self::aside or self::figure or (self::img and not(./ancestor::figure)) or self::iframe or self::slideshow or self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)]]
+ 
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br]
+ 
+  @if( $problems ) {
+    $parent: $problems/parent::*
+    @detach: $parent/node()
+    @set_attr("merge", $index): $@
+    <remove>: $parent
+    @after_el("./parent::*"): $problems
+    @combine: $body//self::*[prev-sibling::*/@merge = @merge]
+  }
+}
+# ====================

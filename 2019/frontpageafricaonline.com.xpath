@@ -1,0 +1,66 @@
+~version: "2.0"
+   
+   ?exists: //meta[starts-with(@property, "article")]
+   
+title: //div[has-class("post-header")]//h1
+body: //article[starts-with(@id, "post-")]
+
+@json_to_xml: //script
+@html_to_dom: $@//datePublished
+@datetime: $@/text()
+published_date: $@
+
+author: //div[has-class("post-meta")]//b
+author_url: //div[has-class("post-meta")]//a/@href
+
+@set_attr(src, @data-src): //img[@data-src]
+
+@map("//a[.//img][not(contains(@href, \"#\") or contains(@href, \"jpg\") or contains(@href, \"jpeg\")  or contains(@href, \"png\") or contains(@href, \"gif\"))]") {
+  @set_attr(href, $@/@href): $@//img
+}
+
+@map("//a[.//img][contains(@href, \"jpg\") or contains(@href, \"jpeg\")  or contains(@href, \"png\") or contains(@href, \"gif\")]") {
+  @set_attr(src, $@/@href): $@//img
+}
+
+$mailto: //a[contains(@href,"0")][contains(.//text(), "@")][contains(.//text(), ".")]
+@set_attr(href, "mailto:", .//text()): $mailto
+
+@if( "//p[contains(@style, \"text-align:center\")]//text()[contains(., \"@\")]/ancestor::p[not(preceding::hr)]" ) {
+  $no_hr: $@
+  @before(<hr>): $no_hr
+  @after(<hr>): $no_hr
+}
+
+@after(<br>): //blockquote/*[not(self::br)][next-sibling::*[not(li)]]
+
+@replace("^\\s+$", " "): //text()
+
+@remove: //div[has-class("post-share")]
+@remove: //div[has-class("post-meta-wrap")]
+@remove: //div[has-class("post-views")]
+@remove: //div[has-class("post-tags")]
+@remove: //div[has-class("bs-irp")]
+
+<div>: //figcaption/.//*[.//text()]
+
+# =====LET ME DIE=====
+# Original code/idea by Misho @mushi_f
+# With modifications by Andrei Afanasiev
+
+$problems: $body
+@while( $problems ) {
+  $test: $body//*[self::video or self::blockquote or self::aside or self::figure or (self::img and not(./ancestor::figure)) or self::iframe or self::slideshow or self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)]]
+ 
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br]
+ 
+  @if( $problems ) {
+    $parent: $problems/parent::*
+    @detach: $parent/node()
+    @set_attr("merge", $index): $@
+    <remove>: $parent
+    @after_el("./parent::*"): $problems
+    @combine: $body//self::*[prev-sibling::*/@merge = @merge]
+  }
+}
+# ====================

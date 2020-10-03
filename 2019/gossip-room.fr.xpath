@@ -1,0 +1,96 @@
+~version: "2.1"
+
+  ?exists: //meta[@property="article:tag"]
+
+title: //h1[has-class("entry-title")]
+body: //article[starts-with(@id, "post-")][1]
+
+# @append(<iframe>,src,"http://www.gossip-room.fr/food/mc-donalds-20-sandwichs-insolites/2/"): $body
+# @inline: $@
+# @unsupported: //ul[@class="paging_btns"]
+
+@if("$body//div[@id=\"gr-article-video-player\"]") {
+  $del: $@
+  @match("video: \"(.*?)\""): //main//script[last()]
+  @replace("video: ", ""): $@
+  @replace("\"",""): $@
+  $parsed: $@/text()[normalize-space()]
+  @prepend(<iframe>): //header[@class="entry-header"]
+  @set_attr(src, "http://www.dailymotion.com/embed/video/", $parsed): $@
+}
+
+author: //span[@class="author vcard"]/a
+author_url: //span[@class="author vcard"]/a/@href
+
+cover: //header[@class="entry-header"]//img
+cover: //header[@class="entry-header"]//iframe
+
+@replace("^\\s+$", " "): //text()
+
+@map("//a[.//img][not(contains(@href, \"#\") or contains(@href, \"jpg\") or contains(@href, \"jpeg\")  or contains(@href, \"png\") or contains(@href, \"gif\"))]") {
+  @set_attr(href, $@/@href): $@//img
+}
+
+@map("//a[.//img][contains(@href, \"jpg\") or contains(@href, \"jpeg\")  or contains(@href, \"png\") or contains(@href, \"gif\")]") {
+  @set_attr(src, $@/@href): $@//img
+}
+
+# @replace("-[0-9]+x[0-9]+\\.(jpg|jpeg|png)", ".$1"): //img/@src
+
+@map( $body//img[@srcset] ) {
+  $cur: $@
+  @append(<div>): //head
+  $box: $@
+  @while( $cur[string-length(@srcset)>0] ) {
+    @clone: $cur
+    $src: $@
+    @append_to($box): $src
+    
+    @set_attr(src, @srcset): $src
+    @match(".+?\\s"): $src/@src
+    @match("(?:\\s|^).+?\\s+?(\\d+)w(,|$)", 1): $src/@srcset
+    @match(".+?,(.+)", 1): $cur/@srcset
+  }
+  @set_attr(src, $box/img[not(../img/@srcset>@srcset)]/@src): $cur
+}
+
+<slideshow>: //div[contains(@id,"gallery")]
+
+@after(<br>): //blockquote/*[not(self::br)][next-sibling::*[not(li)]]
+
+@remove: //hr[prev-sibling::header]
+@remove: //div[@class="shortcodead"]
+@remove: //div[has-class("gr-article-video")]
+@remove: //*[@class="entry-title-main"]
+@remove: //div[@class="entry-meta-mobile"]
+@remove: //div[has-class("article-suggere")]
+@remove: //div[@class="sugg-desk"]
+@remove: //div[@class="entry-meta"]
+@remove: //div[@class="entry-pre"]
+@remove: //div[has-class("post-single")]
+@remove: //related//img
+@remove: //aside
+
+# @wrap(<h4>): //text()[contains(.,"lire aussi") and contains(.,":")]
+# <related>: $@/ancestor::p
+
+# =====LET ME DIE=====
+# Original code/idea by Misho @mushi_f
+# With modifications by Andrei Afanasiev
+
+$problems: $body
+@while( $problems ) {
+  $test: $body//*[self::blockquote or self::aside or self::figure or (self::img and not(./ancestor::figure)) or self::iframe or self::slideshow or self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)]]
+ 
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br]
+ 
+  @if( $problems ) {
+    $parent: $problems/parent::*
+    @detach: $parent/node()
+    @set_attr("merge", $index): $@
+    <remove>: $parent
+    @after_el("./parent::*"): $problems
+    @combine: $body//self::*[prev-sibling::*/@merge = @merge]
+  }
+}
+# ====================

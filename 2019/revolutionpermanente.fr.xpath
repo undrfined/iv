@@ -1,0 +1,88 @@
+~version: "2.1"
+
+site_name: "Révolution Permanente"
+@replace("\\{|\\}", ""): //meta[@property="og:description" or @name="twitter:description"]/@content
+
+  ?exists: //meta[@property="og:type"][contains(@content,"article")]
+
+body: //body[.//section[has-class("hero")]]
+body: //article
+@replace("^\\s+$", " "): //text()
+
+title: //hgroup[@class="hero__title"]//h1
+title: //div[@class="header-articulo"]//h1
+
+kicker: //section[has-class("hero")]//div[@class="publication"]//h5[not(contains(text(),"]"))]
+kicker: //div[@class="header-articulo"]//h4
+@wrap_inner(<b>): //div[@class="header-articulo"]//p
+
+@prepend(<authors>): /html
+@append_to(//authors): //div[@class="autor-articulo"]//a[text()]
+@append_to(//authors): //hgroup//h4/a[text()]
+@combine(", "): //authors/a
+author: $@
+
+$real_date: //p[@class="fecha-articulo"]
+@datetime(0, "fr-FR", "EEE dd MMMM"): $real_date
+@set_attr(pubdate, "0 years ago 1 January + ", $@, " second"): $real_date
+@datetime: $$/@pubdate
+published_date: $@
+published_date: //time/@datetime
+
+@wrap(<figcaption>): //h5[@class="epigraph"]//text()
+$figc: $@
+@background_to_image: //section[has-class("hero")]
+@wrap(<figure>): $@
+$fig: $@
+@append_to($fig): $figc
+@wrap_inner(<cite>): $fig//figcaption
+cover: $fig
+
+@map("//a[.//img][not(contains(@href, \"#\") or contains(@href, \"jpg\") or contains(@href, \"jpeg\") or contains(@href, \"png\") or contains(@href, \"gif\"))]") {
+  @set_attr(href, $@/@href): $@//img
+}
+@map("//a[.//img][contains(@href, \".jpg\") or contains(@href, \".jpeg\") or contains(@href, \".png\") or contains(@href, \".gif\")]") {
+  @set_attr(src, $@/@href): $@//img
+}
+
+<slideshow>: //div[@class="foto-slider"]
+
+@after(<br>): //blockquote/p
+@after(<hr>): //h3[@class="excerpt"]
+
+<details>: //div[@class="notes__ref"]
+@set_attr(open,""): //details
+<p>: //details/div[@id]
+@wrap(<reference>): $@
+@set_attr(name, ./p/@id): $@
+<summary>: //details/h5
+@wrap_inner(<b>): $@
+
+<related>: //section[@class="notes__related"]
+<related>: /html//div[@class="noticias-varias"]
+@append_to($body): $@
+
+@remove: //div[@class="area-comentarios"]
+@remove: //div[@class="temas-relacionados"]
+@remove: //div[@class="social-tools"]
+@remove: //div[@class="autor-articulo"]
+
+@remove: //header
+@remove: //div[@class="notes__social"]
+@remove: //time
+@remove: //a[@class="home__return"]
+@remove: //div[has-class("category")]
+@remove: //section[@class="notes__comments"]
+@remove: //a[@id="comentarios"]
+@remove: //nav
+
+# ====================
+$problems: $body
+@while( $problems ) {
+  $test: $body//*[self::blockquote or self::aside or self::figure or (self::img and not(./ancestor::figure)) or (self::iframe and not(./ancestor::figure)) or (self::video and not(./ancestor::figure)) or self::slideshow or self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)]]
+ 
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote[not(contains(@class,"twi") or contains(@class,"instagram") or contains(@class,"fb-"))] or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br]
+ 
+ @split_parent: $problems
+}
+# ====================

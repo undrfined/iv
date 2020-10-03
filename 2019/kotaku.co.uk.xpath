@@ -1,0 +1,93 @@
+~version: "2.1"
+
+site_name: "Kotaku UK"
+
+    ?exists: //article[has-class("single-article")]
+
+body: //article[has-class("single-article")]
+title: //h1
+
+@html_to_dom: //meta[@property="og:description"]/@content
+description: $@
+
+@datetime(+3): //span[has-class("meta__full")]//time[@itemprop="datePublished"]/@datetime
+published_date: $@
+
+author: //a[@class="is-author"]
+
+@replace("^\\s+$", " "): //text()
+
+<p>: //blockquote//*[self::h1 or self::h2 or self::h3 or self::h4 or self::h5 or self::h6]
+@wrap_inner(<b>)
+@after(<br>): //blockquote//*[self::p]
+
+<aside>: //*[self::h2 or self::h3][contains(@style,"text-align: right")]
+@remove: //aside/prev-sibling::hr
+@remove: //aside/next-sibling::hr
+
+@map("//a[.//img][contains(@href, \".jpg\") or contains(@href, \".jpeg\") or contains(@href, \".png\") or contains(@href, \".gif\")]") {
+   @set_attr(src, $@/@href): $@//img
+}
+@map("//a[.//img][not(contains(@href, \".jpg\") or contains(@href, \".jpeg\") or contains(@href, \".png\") or contains(@href, \".gif\"))]") {
+   @set_attr(href, $@/@href): $@//img
+}
+
+cover: //figure[has-class("single-article__canvas")]
+@set_attr(href,""): $$//img
+
+<figure>: //div[has-class("media_wrap")]
+<figure>: //p[em][img or div[iframe] or iframe]
+<figcaption>: //figure//em
+
+<video>: //iframe[ends-with(@src,".mp4")]
+
+#
+<slideshow>: //div[@class="owl-wrapper"]
+<figure>: //div[@class="item"]
+<figcaption>: //div[@class="content"]
+<cite>: //p[@class="source"]
+@append_to("./following::figcaption[not(descendant::cite)][1]"): //cite[not(ancestor::figcaption)][1]
+#
+
+#
+<related>: //div[has-class("referenced-article")]
+<related>: //div[@id="inner_related_posts"]
+@append_to($body): //related
+@combine: //related/next-sibling::related
+#
+
+#
+@replace(".+(playwire.com\/\\d+\/videos\/)v2\/(\\d+).+", "\/\/cdn.video.$1$2\/video-sd.mp4"): //script[contains(@data-config, "playwire")]/@data-config
+<video>: //script[contains(@data-config, "playwire")]
+@set_attr(src, @data-config): $@
+#
+
+@remove: //div[has-class("meta--line")]
+@remove: //div[has-class("meta--post")]
+@remove: //div[@class="tags"]
+@remove: //div[has-class("media")]
+@remove: //*[self::img or self::iframe][@width=1]
+@remove: //img[@src=""]
+
+# ====================
+$problems: $body
+@while( $problems ) {
+  $test: $body//*[self::blockquote or self::aside or self::figure or (self::img and not(./ancestor::figure)) or (self::iframe and not(./ancestor::figure)) or (self::video and not(./ancestor::figure)) or self::slideshow or self::related or self::footer or self::table[not(ancestor::table) and not(descendant::table)] or self::script[@data-telegram-post]]
+ 
+  $problems: $test/self::*[ancestor::anchor or ancestor::blockquote[not(contains(@class,"twi") or contains(@class,"instagram") or contains(@class,"fb-"))] or ancestor::aside or ancestor::footer or ancestor::strong or ancestor::b or ancestor::em or ancestor::i or ancestor::ins or ancestor::u or ancestor::del or ancestor::s or ancestor::strike or ancestor::code or ancestor::kbd or ancestor::samp or ancestor::tt or ancestor::mark or ancestor::sup or ancestor::pic or ancestor::sub or ancestor::a or ancestor::reference or ancestor::h1 or ancestor::h2 or ancestor::h3 or ancestor::h4 or ancestor::h5 or ancestor::h6 or ancestor::p or ancestor::pre or ancestor::hr or ancestor::img or ancestor::br]
+ 
+ @split_parent: $problems
+}
+# ====================
+
+#
+@unsupported: //form
+@unsupported: //div[@class="playbuzz"]
+@unsupported: //div[contains(@class, "Poll")]
+@unsupported: //a[@class="embedly-card"]
+<div>: //blockquote[contains(@class,"reddit")]
+<unsupported>: //script[contains(@src,"polldaddy") or contains(@src,"vidible") or contains(@src,"stackcommerce") or contains(@src,"complex.com") or contains(@src,"tumblr") or contains(@src,"whistleout")]
+@unsupported: //unsupported
+#
+
+@remove: //*[contains(@*,"twitter")]
