@@ -1,0 +1,51 @@
+~version: "2.0"
+$main: //article #div[has-class("main-section")]
+$title: $main//h1[has-class("single-post-title")]/span[has-class("post-title")]
+title: $title
+
+author: $main//a[has-class("post-author-a")]/span[has-class("post-author-name")]/b
+author_url: $main//a[has-class("post-author-a")]/@href
+$cover: $main//div[has-class("single-featured")]/figure
+cover: $cover
+
+$body: $main//div[has-class("single-post-content")]
+
+#@set_attr(class, "testrel"): $main//div[has-class("jp-relatedposts")]
+#$reltd: $main//div[has-class("testrel")]
+#@remove: $body//div[has-class("jp-relatedposts")]//p
+#@remove: $body//div[has-class("jp-relatedposts")]//h4
+#@remove: $body//div[has-class("jp-relatedposts")]//img
+#<related>: $reltd
+#@debug: $reltd
+#$rela: $body//div[has-class("testrel")]/div/div
+#@debug: $body
+
+#@after_el("./../../self::h3"): $rela
+
+#@debug: $body//related
+
+$picsa: $body//a//img
+@before_el("./../self::a"): $picsa
+
+$picsp: $body//p//img
+@before_el("./../self::p"): $picsp
+
+
+
+#@set_attr(alt, "test"): $body//img
+#@set_attr(data-lazy-srcset, "test"): $body//img
+#@set_attr(data-lazy-sizes, "test"): $body//img
+#@set_attr(data-lazy-src, "test"): $body//img
+@set_attr(srcset, @src): $body//img
+
+$iframep: $main//p//iframe
+@after_el("./../self::p"): $iframep
+
+@replace("^ $", ""): $body//p[contains(text()," ")]//text()
+
+
+@remove: $body//iframe[@id="Iharare Duta Opt-in"]
+@remove: $body//div[has-class("wpcnt")] 
+@remove: $body//div[has-class("sharedaddy")] 
+@remove: $body//div[has-class("jp-relatedposts")] 
+@remove: $body//noscript
